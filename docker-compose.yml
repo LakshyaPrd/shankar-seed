@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: shankar_seeds_mongodb
+    restart: always
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shankar_seeds_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: "mongodb://mongodb:27017/shankar_seeds_erp?replicaSet=rs0&directConnection=true"
+      JWT_SECRET: "shankar_seeds_erp_super_secret_jwt_key_2026"
+      JWT_EXPIRES_IN: "7d"
+      JWT_REFRESH_SECRET: "shankar_seeds_erp_refresh_secret_key_2026"
+      JWT_REFRESH_EXPIRES_IN: "30d"
+      CORS_ORIGIN: "*"
+    depends_on:
+      - mongodb
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shankar_seeds_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:5000/api"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

@@ -1,0 +1,370 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum SystemRole {
+  OWNER
+  MANAGER
+  ACCOUNTANT
+  WAREHOUSE_STAFF
+  WORKER
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+  OVERTIME
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum PurchaseStatus {
+  RECEIVED
+  PENDING
+  CANCELLED
+}
+
+enum DispatchStatus {
+  PENDING
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  FUEL
+  LOADING
+  UNLOADING
+  TEA
+  OFFICE
+  ELECTRICITY
+  MISC
+}
+
+model Role {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  name        SystemRole @unique
+  description String?
+  users       User[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("roles")
+}
+
+model User {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  email        String        @unique
+  password     String
+  name         String
+  phone        String?
+  roleId       String        @db.ObjectId
+  role         Role          @relation(fields: [roleId], references: [id])
+  status       String        @default("ACTIVE")
+  refreshToken String?
+  activityLogs ActivityLog[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("users")
+}
+
+model Employee {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  photo       String?
+  phone       String
+  salary      Float
+  joiningDate DateTime
+  designation String
+  status      String       @default("ACTIVE")
+  attendance  Attendance[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("employees")
+}
+
+model Attendance {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId    String           @db.ObjectId
+  employee      Employee         @relation(fields: [employeeId], references: [id])
+  date          DateTime
+  status        AttendanceStatus
+  overtimeHours Float            @default(0)
+  remarks       String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([employeeId, date])
+  @@map("attendance")
+}
+
+model Customer {
+  id                 String     @id @default(auto()) @map("_id") @db.ObjectId
+  partyName          String
+  gst                String?
+  phone              String
+  email              String?
+  address            String
+  outstandingBalance Float      @default(0)
+  dispatches         Dispatch[]
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@map("customers")
+}
+
+model Supplier {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  supplierName String
+  gst          String?
+  phone        String
+  email        String?
+  address      String
+  purchases    Purchase[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@map("suppliers")
+}
+
+model Category {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("categories")
+}
+
+model Product {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  brand         String
+  categoryId    String          @db.ObjectId
+  category      Category        @relation(fields: [categoryId], references: [id])
+  hsn           String
+  unit          String          @default("KG")
+  minimumStock  Float           @default(10)
+  description   String?
+  image         String?
+  barcode       String?         @unique
+  status        String          @default("ACTIVE")
+  inventories   Inventory[]
+  movements     StockMovement[]
+  purchaseItems PurchaseItem[]
+  dispatchItems DispatchItem[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("products")
+}
+
+model Inventory {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  productId    String    @db.ObjectId
+  product      Product   @relation(fields: [productId], references: [id])
+  warehouse    String    @default("Main Warehouse")
+  batchNumber  String
+  expiryDate   DateTime?
+  currentStock Float     @default(0)
+  incoming     Float     @default(0)
+  outgoing     Float     @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([productId, batchNumber, warehouse])
+  @@map("inventory")
+}
+
+model StockMovement {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  productId     String       @db.ObjectId
+  product       Product      @relation(fields: [productId], references: [id])
+  type          MovementType
+  quantity      Float
+  referenceType String
+  referenceId   String?
+  warehouse     String       @default("Main Warehouse")
+  remarks       String?
+  createdAt     DateTime     @default(now())
+
+  @@map("stock_movements")
+}
+
+model Purchase {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  supplierId      String         @db.ObjectId
+  supplier        Supplier       @relation(fields: [supplierId], references: [id])
+  invoiceNumber   String         @unique
+  date            DateTime
+  totalAmount     Float          @default(0)
+  gstAmount       Float          @default(0)
+  transportCharge Float          @default(0)
+  grandTotal      Float          @default(0)
+  notes           String?
+  status          PurchaseStatus @default(RECEIVED)
+  items           PurchaseItem[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  purchaseId String   @db.ObjectId
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
+  productId  String   @db.ObjectId
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Float
+  rate       Float
+  gstPercent Float    @default(5)
+  amount     Float
+  createdAt  DateTime @default(now())
+
+  @@map("purchase_items")
+}
+
+model Dispatch {
+  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
+  billNumber         String            @unique
+  date               DateTime
+  customerId         String?           @db.ObjectId
+  customer           Customer?         @relation(fields: [customerId], references: [id])
+  partyName          String
+  transportCompanyId String?           @db.ObjectId
+  transportCompany   TransportCompany? @relation(fields: [transportCompanyId], references: [id])
+  transportName      String
+  driverName         String
+  vehicleNumber      String
+  mobileNumber       String
+  destination        String
+  goodsDescription   String?
+  totalQuantity      Float             @default(0)
+  totalAmount        Float             @default(0)
+  remarks            String?
+  status             DispatchStatus    @default(DISPATCHED)
+  items              DispatchItem[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@map("dispatches")
+}
+
+model DispatchItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  dispatchId  String   @db.ObjectId
+  dispatch    Dispatch @relation(fields: [dispatchId], references: [id])
+  productId   String   @db.ObjectId
+  product     Product  @relation(fields: [productId], references: [id])
+  batchNumber String?
+  quantity    Float
+  rate        Float    @default(0)
+  amount      Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@map("dispatch_items")
+}
+
+model TransportCompany {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  companyName String
+  phone       String
+  email       String?
+  address     String
+  drivers     Driver[]
+  vehicles    Vehicle[]
+  dispatches  Dispatch[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("transport_companies")
+}
+
+model Driver {
+  id                 String           @id @default(auto()) @map("_id") @db.ObjectId
+  transportCompanyId String           @db.ObjectId
+  transportCompany   TransportCompany @relation(fields: [transportCompanyId], references: [id])
+  driverName         String
+  phone              String
+  licenseNumber      String
+  status             String           @default("ACTIVE")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@map("drivers")
+}
+
+model Vehicle {
+  id                 String           @id @default(auto()) @map("_id") @db.ObjectId
+  transportCompanyId String           @db.ObjectId
+  transportCompany   TransportCompany @relation(fields: [transportCompanyId], references: [id])
+  vehicleNumber      String           @unique
+  vehicleType        String
+  capacity           String
+  status             String           @default("ACTIVE")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@map("vehicles")
+}
+
+model Expense {
+  id           String          @id @default(auto()) @map("_id") @db.ObjectId
+  category     ExpenseCategory
+  title        String
+  amount       Float
+  date         DateTime
+  paymentMode  String          @default("CASH")
+  receiptImage String?
+  remarks      String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("expenses")
+}
+
+model Setting {
+  id              String   @id @default("default") @map("_id")
+  companyName     String   @default("Shankar Seeds")
+  logo            String?
+  address         String   @default("Station Road, Guntur, Andhra Pradesh, India")
+  gstNumber       String   @default("37AAACS1234F1Z9")
+  phone           String   @default("+91 98765 43210")
+  email           String   @default("info@shankarseeds.com")
+  invoicePrefix   String   @default("SS-2026-")
+  financialYear   String   @default("2026-2027")
+  backupFrequency String   @default("DAILY")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("settings")
+}
+
+model ActivityLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  module    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}
