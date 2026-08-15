@@ -20,7 +20,7 @@ export default function PurchasesPage() {
     invoiceNumber: `INV-ARR-${Math.floor(1000 + Math.random() * 9000)}`,
     date: new Date().toISOString().split('T')[0],
     transportCharge: '1500',
-    warehouse: 'Branch 1 - Guntur Main',
+    warehouse: 'Vishwakarma Industrial Area',
     notes: 'Seasonal seed arrival batch',
   });
 
@@ -70,7 +70,7 @@ export default function PurchasesPage() {
         invoiceNumber: `INV-ARR-${Math.floor(1000 + Math.random() * 9000)}`,
         date: new Date().toISOString().split('T')[0],
         transportCharge: '1500',
-        warehouse: 'Branch 1 - Guntur Main',
+        warehouse: 'Vishwakarma Industrial Area',
         notes: 'Seasonal seed arrival batch',
       });
       setItems([{ productId: '', productName: '', isCustom: false, batchNumber: 'BATCH-2026-NEW', quantity: '100', rate: '200', gstPercent: '5' }]);
@@ -261,9 +261,8 @@ export default function PurchasesPage() {
                 onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
                 className="w-full p-2 bg-background border rounded-md font-semibold"
               >
-                <option value="Branch 1 - Guntur Main">Branch 1 - Guntur Main</option>
-                <option value="Branch 2 - Vijayawada Hub">Branch 2 - Vijayawada Hub</option>
-                <option value="Branch 3 - Ongole Center">Branch 3 - Ongole Center</option>
+                <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
+                <option value="Johri Bazar">Johri Bazar</option>
               </select>
             </div>
 

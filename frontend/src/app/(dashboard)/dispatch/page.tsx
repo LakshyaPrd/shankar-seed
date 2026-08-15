@@ -49,22 +49,22 @@ export default function DispatchPage() {
   });
 
   const [formData, setFormData] = useState({
-    billNumber: `SS-DISP-${Math.floor(1000 + Math.random() * 9000)}`,
+    billNumber: `SBB/26-27/${Math.floor(1000 + Math.random() * 9000)}`,
     date: new Date().toISOString().split('T')[0],
     customerId: '',
     partyName: '',
-    transportName: 'Sri Balaji Express Logistics',
-    driverName: 'Ramesh Kumar',
-    vehicleNumber: 'AP-16-TH-7890',
-    mobileNumber: '+91 97012 34567',
-    destination: 'Vijayawada Bazaar',
-    warehouse: 'Branch 1 - Guntur Main',
-    goodsDescription: 'Seed bags dispatch register entry',
+    transportName: '',
+    driverName: '',
+    vehicleNumber: '',
+    mobileNumber: '',
+    destination: '',
+    warehouse: 'Vishwakarma Industrial Area',
+    goodsDescription: '',
     remarks: '',
   });
 
   const [items, setItems] = useState<any[]>([
-    { productId: '', productName: '', isCustom: false, batchNumber: 'BATCH-2026-01', quantity: '10', rate: '300' },
+    { productId: '', productName: '', isCustom: false, batchNumber: '', quantity: '', rate: '' },
   ]);
 
   const { data: dispatches, isLoading } = useQuery({
@@ -105,20 +105,20 @@ export default function DispatchPage() {
       setIsModalOpen(false);
       setErrorMessage('');
       setFormData({
-        billNumber: `SS-DISP-${Math.floor(1000 + Math.random() * 9000)}`,
+        billNumber: `SBB/26-27/${Math.floor(1000 + Math.random() * 9000)}`,
         date: new Date().toISOString().split('T')[0],
         customerId: '',
         partyName: '',
-        transportName: 'Sri Balaji Express Logistics',
-        driverName: 'Ramesh Kumar',
-        vehicleNumber: 'AP-16-TH-7890',
-        mobileNumber: '+91 97012 34567',
-        destination: 'Vijayawada Bazaar',
-        warehouse: 'Branch 1 - Guntur Main',
-        goodsDescription: 'Seed bags dispatch register entry',
+        transportName: '',
+        driverName: '',
+        vehicleNumber: '',
+        mobileNumber: '',
+        destination: '',
+        warehouse: 'Vishwakarma Industrial Area',
+        goodsDescription: '',
         remarks: '',
       });
-      setItems([{ productId: '', productName: '', isCustom: false, batchNumber: 'BATCH-2026-01', quantity: '10', rate: '300' }]);
+      setItems([{ productId: '', productName: '', isCustom: false, batchNumber: '', quantity: '', rate: '' }]);
     },
     onError: (err: any) => {
       setErrorMessage(err.response?.data?.message || err.message || 'Failed to save dispatch entry');
@@ -141,7 +141,7 @@ export default function DispatchPage() {
   });
 
   const addItemRow = () => {
-    setItems([...items, { productId: '', productName: '', isCustom: false, batchNumber: 'BATCH-2026-01', quantity: '10', rate: '300' }]);
+    setItems([...items, { productId: '', productName: '', isCustom: false, batchNumber: '', quantity: '', rate: '' }]);
   };
 
   const removeItemRow = (idx: number) => {
@@ -552,9 +552,8 @@ export default function DispatchPage() {
                 onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
                 className="w-full p-2 bg-background border rounded-md font-semibold"
               >
-                <option value="Branch 1 - Guntur Main">Branch 1 - Guntur Main</option>
-                <option value="Branch 2 - Vijayawada Hub">Branch 2 - Vijayawada Hub</option>
-                <option value="Branch 3 - Ongole Center">Branch 3 - Ongole Center</option>
+                <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
+                <option value="Johri Bazar">Johri Bazar</option>
               </select>
             </div>
 

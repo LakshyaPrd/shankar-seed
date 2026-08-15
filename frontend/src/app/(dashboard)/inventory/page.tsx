@@ -20,7 +20,7 @@ export default function InventoryPage() {
   const [adjustForm, setAdjustForm] = useState({
     productId: '',
     batchNumber: 'BATCH-2026-MANUAL',
-    warehouse: 'Branch 1 - Guntur Main',
+    warehouse: 'Vishwakarma Industrial Area',
     quantity: '50',
     type: 'IN',
     remarks: 'Manual Stock Audit Adjustment',
@@ -435,9 +435,8 @@ export default function InventoryPage() {
                 onChange={(e) => setAdjustForm({ ...adjustForm, warehouse: e.target.value })}
                 className="w-full p-2 bg-background border rounded-md"
               >
-                <option value="Branch 1 - Guntur Main">Branch 1 - Guntur Main</option>
-                <option value="Branch 2 - Vijayawada Hub">Branch 2 - Vijayawada Hub</option>
-                <option value="Branch 3 - Ongole Center">Branch 3 - Ongole Center</option>
+                <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
+                <option value="Johri Bazar">Johri Bazar</option>
               </select>
             </div>
           </div>

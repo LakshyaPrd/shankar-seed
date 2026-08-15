@@ -48,7 +48,7 @@ export class InventoryController {
     const inventories = await prisma.inventory.findMany({
       include: { product: { include: { category: true } } },
     });
-    const lowStock = inventories.filter((inv) => inv.currentStock <= (inv.product?.minimumStock || 10));
+    const lowStock = (inventories || []).filter((inv) => (inv?.currentStock ?? 0) <= (inv?.product?.minimumStock ?? 10));
     return res.json({ success: true, data: lowStock });
   }
 

@@ -76,7 +76,7 @@ export class DashboardController {
     for (const inv of inventories) {
       currentStockCount += inv.currentStock;
       if (inv.currentStock <= (inv.product?.minimumStock || 10)) lowStockCount++;
-      const itemRate = productRateMap.get(inv.productId) || 200;
+      const itemRate = (inv.productId ? productRateMap.get(inv.productId) : undefined) || 200;
       totalInventoryValue += Math.max(0, inv.currentStock) * itemRate;
     }
 

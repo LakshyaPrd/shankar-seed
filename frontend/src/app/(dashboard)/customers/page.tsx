@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { Plus, Users, Receipt, FileText, Phone, Mail } from 'lucide-react';
+import { Plus, Users, Receipt, FileText, Phone, Mail, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Customer } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -14,6 +14,8 @@ export default function CustomersPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLedgerCustomer, setSelectedLedgerCustomer] = useState<any>(null);
+  const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     partyName: '',
@@ -38,6 +40,15 @@ export default function CustomersPage() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setIsModalOpen(false);
       setFormData({ partyName: '', gst: '', phone: '', email: '', address: '', outstandingBalance: '0' });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => api.delete(`/customers/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setIsDeleteModalOpen(false);
+      setDeleteCustomer(null);
     },
   });
 
@@ -94,12 +105,24 @@ export default function CustomersPage() {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <button
-          onClick={() => openLedger(row.original)}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs border rounded-md hover:bg-muted font-medium transition"
-        >
-          <FileText className="h-3.5 w-3.5" /> Ledger History
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => openLedger(row.original)}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs border rounded-md hover:bg-muted font-medium transition"
+          >
+            <FileText className="h-3.5 w-3.5" /> Ledger
+          </button>
+          <button
+            onClick={() => {
+              setDeleteCustomer(row.original);
+              setIsDeleteModalOpen(true);
+            }}
+            className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition"
+            title="Delete Customer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];
@@ -125,6 +148,43 @@ export default function CustomersPage() {
         isLoading={isLoading}
         searchPlaceholder="Search party name, GSTIN, phone..."
       />
+
+      {/* Delete Customer Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Confirm Delete Customer"
+        description="Are you sure you want to delete this customer record?"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg space-y-1">
+            <div className="font-bold text-sm">{deleteCustomer?.partyName}</div>
+            <div>Phone: {deleteCustomer?.phone}</div>
+            <div>GSTIN: {deleteCustomer?.gst || 'N/A'}</div>
+            <div className="text-[10px] text-muted-foreground mt-1">
+              Warning: Deleting this customer will remove their record from the customer directory.
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="px-4 py-2 border rounded-md text-muted-foreground hover:bg-muted font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteCustomer?.id && deleteMutation.mutate(deleteCustomer.id)}
+              className="px-4 py-2 bg-destructive text-destructive-foreground font-bold rounded-md hover:bg-destructive/90 transition"
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Yes, Delete Customer'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Customer Modal */}
       <Modal
@@ -255,3 +315,4 @@ export default function CustomersPage() {
     </div>
   );
 }
+

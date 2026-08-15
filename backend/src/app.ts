@@ -1,4 +1,5 @@
 import express from 'express';
+import 'express-async-errors';
 import cors from 'cors';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
@@ -9,8 +10,38 @@ import { ENV } from './config/env';
 
 const app = express();
 
-// Middlewares
-app.use(cors({ origin: ENV.CORS_ORIGIN, credentials: true }));
+// Allowed CORS origins
+const allowedOrigins = [
+  'https://shankar-seed.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:3001',
+  ENV.CORS_ORIGIN,
+].filter(Boolean);
+
+// CORS Middlewares
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, cURL, server-to-server)
+      if (!origin) return callback(null, true);
+      if (
+        ENV.CORS_ORIGIN === '*' ||
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes('*') ||
+        origin.endsWith('.vercel.app')
+      ) {
+        return callback(null, origin);
+      }
+      return callback(null, origin);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  })
+);
+
+app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -40,3 +71,4 @@ app.use('/api', routes);
 app.use(errorHandler);
 
 export default app;
+
