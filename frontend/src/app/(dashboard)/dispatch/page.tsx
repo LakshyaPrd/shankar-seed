@@ -516,13 +516,22 @@ export default function DispatchPage() {
             {isFieldVisible('billNumber') && (
               <div className="space-y-1">
                 <label className="font-medium text-muted-foreground">{getFieldLabel('billNumber', 'Bill / Gate Pass Number')} *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.billNumber}
-                  onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })}
-                  className="w-full p-2 bg-background border rounded-md font-mono"
-                />
+                <div className="flex rounded-md border bg-background overflow-hidden focus-within:ring-1 focus-within:ring-primary border-input">
+                  <span className="px-2.5 py-2 bg-muted/80 text-foreground font-mono font-bold text-xs border-r flex items-center select-none shrink-0">
+                    SBB/26-27/
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    value={formData.billNumber.replace(/^SBB\/26-27\//i, '')}
+                    onChange={(e) => {
+                      const cleanVal = e.target.value.replace(/^SBB\/26-27\//i, '');
+                      setFormData({ ...formData, billNumber: `SBB/26-27/${cleanVal}` });
+                    }}
+                    placeholder="4293"
+                    className="w-full p-2 bg-transparent outline-none font-mono font-bold text-xs"
+                  />
+                </div>
               </div>
             )}
 
