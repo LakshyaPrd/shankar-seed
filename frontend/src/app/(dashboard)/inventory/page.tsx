@@ -21,9 +21,11 @@ export default function InventoryPage() {
 
   const [adjustForm, setAdjustForm] = useState({
     productId: '',
-    batchNumber: 'BATCH-2026-MANUAL',
+    batchNumber: `BATCH-2026-${Math.floor(100 + Math.random() * 900)}`,
     warehouse: 'Vishwakarma Industrial Area',
+    unitType: 'BAG',
     quantity: '50',
+    bagWeight: '40',
     type: 'IN',
     remarks: 'Manual Stock Audit Adjustment',
   });
@@ -40,9 +42,11 @@ export default function InventoryPage() {
   const { data: inventoryData, isLoading } = useQuery({
     queryKey: ['inventory'],
     queryFn: async () => {
-      const res: any = await api.get('/inventory');
+      const res: any = await api.get('/inventory?limit=1000');
       return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     },
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
   });
 
   // Query Low Stock Alerts
@@ -52,24 +56,27 @@ export default function InventoryPage() {
       const res: any = await api.get('/inventory/low-stock-alerts');
       return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     },
+    refetchInterval: 3000,
   });
 
   // Query Movements
   const { data: movementsData } = useQuery({
     queryKey: ['stock-movements'],
     queryFn: async () => {
-      const res: any = await api.get('/stock/movements');
+      const res: any = await api.get('/stock/movements?limit=1000');
       return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     },
+    refetchInterval: 3000,
   });
 
   // Query Products dropdown
   const { data: products } = useQuery({
     queryKey: ['products-list'],
     queryFn: async () => {
-      const res: any = await api.get('/products');
+      const res: any = await api.get('/products?limit=1000');
       return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     },
+    refetchInterval: 3000,
   });
 
   const adjustMutation = useMutation({
@@ -78,7 +85,11 @@ export default function InventoryPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-low-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-list'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       setIsAdjustModalOpen(false);
     },
   });
@@ -116,7 +127,19 @@ export default function InventoryPage() {
 
   const handleAdjustSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    adjustMutation.mutate(adjustForm);
+    const isBag = adjustForm.unitType === 'BAG' || adjustForm.unitType === 'PACKET';
+    const qty = Number(adjustForm.quantity || 0);
+    const bw = Number(adjustForm.bagWeight || 40);
+    const totalQty = isBag ? qty * bw : qty;
+
+    adjustMutation.mutate({
+      productId: adjustForm.productId,
+      batchNumber: adjustForm.batchNumber,
+      warehouse: adjustForm.warehouse,
+      type: adjustForm.type,
+      quantity: totalQty,
+      remarks: isBag ? `${adjustForm.remarks} (${qty} Bags × ${bw}KG = ${totalQty}KG)` : adjustForm.remarks,
+    });
   };
 
   const handleApproveSubmit = (e: React.FormEvent) => {
@@ -381,13 +404,21 @@ export default function InventoryPage() {
               <select
                 required
                 value={adjustForm.productId}
-                onChange={(e) => setAdjustForm({ ...adjustForm, productId: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
+                onChange={(e) => {
+                  const p = products?.find((prod: any) => prod.id === e.target.value);
+                  setAdjustForm({
+                    ...adjustForm,
+                    productId: e.target.value,
+                    unitType: p?.unit || 'BAG',
+                    bagWeight: String(p?.bagWeight || 40),
+                  });
+                }}
+                className="w-full p-2 bg-background border rounded-md font-semibold"
               >
                 <option value="">Select Seed Product</option>
                 {products?.map((p: any) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} ({p.brand})
+                    {p.name} ({p.brand}) {p.bagWeight ? `- ${p.bagWeight}KG Bag` : ''}
                   </option>
                 ))}
               </select>
@@ -401,7 +432,7 @@ export default function InventoryPage() {
                 <select
                   value={adjustForm.type}
                   onChange={(e) => setAdjustForm({ ...adjustForm, type: e.target.value })}
-                  className="w-full p-2 bg-background border rounded-md"
+                  className="w-full p-2 bg-background border rounded-md font-bold"
                 >
                   <option value="IN">IN (+ Stock Addition)</option>
                   <option value="OUT">OUT (- Stock Reduction)</option>
@@ -409,18 +440,76 @@ export default function InventoryPage() {
               </div>
             )}
 
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Unit of Stock *</label>
+              <select
+                value={adjustForm.unitType || 'BAG'}
+                onChange={(e) => setAdjustForm({ ...adjustForm, unitType: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md font-semibold"
+              >
+                <option value="BAG">BAG (Bags / Sacks)</option>
+                <option value="PACKET">PACKET (Retail Pouches)</option>
+                <option value="KG">KG (Kilograms)</option>
+                <option value="QUINTAL">QUINTAL (100KG)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {isFieldVisible('quantity') && (
               <div className="space-y-1">
-                <label className="font-medium text-muted-foreground">{getFieldLabel('quantity', 'Quantity')} *</label>
+                <label className="font-medium text-muted-foreground">
+                  {(adjustForm.unitType === 'BAG' || adjustForm.unitType === 'PACKET') ? 'Number of Bags / Pieces *' : 'Quantity (KG) *'}
+                </label>
                 <input
                   type="number"
                   required
                   value={adjustForm.quantity}
                   onChange={(e) => setAdjustForm({ ...adjustForm, quantity: e.target.value })}
-                  className="w-full p-2 bg-background border rounded-md"
+                  className="w-full p-2 bg-background border rounded-md font-bold text-foreground"
                 />
               </div>
             )}
+
+            {(adjustForm.unitType === 'BAG' || adjustForm.unitType === 'PACKET') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">Bag Weight (KG per Bag) *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    required
+                    value={adjustForm.bagWeight}
+                    onChange={(e) => setAdjustForm({ ...adjustForm, bagWeight: e.target.value })}
+                    placeholder="e.g. 40"
+                    className="w-full p-2 bg-background border rounded-md font-bold"
+                  />
+                  <span className="self-center font-bold text-xs text-muted-foreground">KG</span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  {['5', '10', '25', '40', '50'].map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setAdjustForm({ ...adjustForm, bagWeight: w })}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded border transition ${
+                        adjustForm.bagWeight === w ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                    >
+                      {w} KG
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg flex items-center justify-between font-bold">
+            <span className="text-primary text-xs">Total Net Inventory Quantity Adjustment:</span>
+            <span className="text-primary text-sm font-black">
+              {(adjustForm.unitType === 'BAG' || adjustForm.unitType === 'PACKET')
+                ? `${Number(adjustForm.quantity || 0) * Number(adjustForm.bagWeight || 40)} KG (${Number(adjustForm.quantity || 0)} Bags × ${Number(adjustForm.bagWeight || 40)}KG)`
+                : `${Number(adjustForm.quantity || 0)} KG`}
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

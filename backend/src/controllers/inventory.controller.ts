@@ -9,7 +9,7 @@ export class InventoryController {
     const warehouse = req.query.warehouse ? String(req.query.warehouse) : undefined;
     const isLowStock = req.query.isLowStock === 'true';
     const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 10);
+    const limit = Number(req.query.limit || 1000);
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -86,12 +86,13 @@ export class InventoryController {
       include: { product: true },
     });
 
-    // Send notification
-    const { NotificationService } = await import('../services/notification.service');
-    await NotificationService.send({
-      type: 'INVENTORY_UPDATED',
-      title: '📦 Inventory Stock Adjusted',
-      message: `Stock for '${inventory?.product?.name || 'Product'}' (Batch: ${batchNumber}) adjusted by ${type === 'IN' ? '+' : '-'}${qty} units at ${warehouse}.`,
+    // Send notification in background (non-blocking)
+    import('../services/notification.service').then(({ NotificationService }) => {
+      NotificationService.send({
+        type: 'INVENTORY_UPDATED',
+        title: '📦 Inventory Stock Adjusted',
+        message: `Stock for '${inventory?.product?.name || 'Product'}' (Batch: ${batchNumber}) adjusted by ${type === 'IN' ? '+' : '-'}${qty} units at ${warehouse}.`,
+      }).catch((err) => console.error('Notification error:', err));
     });
 
     return res.json({ success: true, data: inventory });

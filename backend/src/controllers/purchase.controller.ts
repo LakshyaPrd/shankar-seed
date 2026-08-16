@@ -204,11 +204,12 @@ export class PurchaseController {
 
       const result = await prisma.purchase.findUnique({ where: { id: purchaseId.toString() }, include: { supplier: true, items: true } });
 
-      const { NotificationService } = await import('../services/notification.service');
-      await NotificationService.send({
-        type: 'PURCHASE_ARRIVED',
-        title: '🚚 Purchase Invoice Recorded',
-        message: `Purchase invoice #${invoiceNumber} from ${result?.supplier?.supplierName || 'Supplier'} recorded for ₹${grandTotal}.`,
+      import('../services/notification.service').then(({ NotificationService }) => {
+        NotificationService.send({
+          type: 'PURCHASE_ARRIVED',
+          title: '🚚 Purchase Invoice Recorded',
+          message: `Purchase invoice #${invoiceNumber} from ${result?.supplier?.supplierName || 'Supplier'} recorded for ₹${grandTotal}.`,
+        }).catch((err) => console.error('Notification error:', err));
       });
 
       return res.json({ success: true, data: result });
@@ -443,11 +444,12 @@ export class DispatchController {
         include: { customer: true, items: true },
       });
 
-      const { NotificationService } = await import('../services/notification.service');
-      await NotificationService.send({
-        type: 'GOODS_DISPATCHED',
-        title: '📦 Goods Dispatched (Gate Pass)',
-        message: `Dispatch bill #${billNumber} for ${partyName} (${totalQty} units, ₹${totalAmt}) processed at ${processedItems[0]?.warehouse || 'Branch 1'}.`,
+      import('../services/notification.service').then(({ NotificationService }) => {
+        NotificationService.send({
+          type: 'GOODS_DISPATCHED',
+          title: '📦 Goods Dispatched (Gate Pass)',
+          message: `Dispatch bill #${billNumber} for ${partyName} (${totalQty} units, ₹${totalAmt}) processed at ${processedItems[0]?.warehouse || 'Branch 1'}.`,
+        }).catch((err) => console.error('Notification error:', err));
       });
 
       return res.json({ success: true, data: result });

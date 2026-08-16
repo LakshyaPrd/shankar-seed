@@ -655,108 +655,194 @@ export default function DispatchPage() {
               </button>
             </div>
 
-            {items.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-card p-2.5 sm:p-2 rounded-lg border">
-                {/* Product Name / Selection */}
-                <div className={`${fieldConfig.batchNumber && fieldConfig.rate ? 'sm:col-span-5' : 'sm:col-span-7'} space-y-1`}>
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-medium text-muted-foreground">
-                      {item.isCustom ? 'Type Custom Product Name' : 'Select Product'}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => toggleCustomItem(idx)}
-                      className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5"
-                    >
-                      {item.isCustom ? <ListFilter className="h-3 w-3" /> : <Type className="h-3 w-3" />}
-                      {item.isCustom ? 'Pick List' : '+ Custom Name'}
-                    </button>
+            {items.map((item, idx) => {
+              const isBagUnit = item.unit === 'BAG' || item.unit === 'PACKET';
+              const bagCount = Number(item.quantity || 0);
+              const bw = Number(item.bagWeight || 40);
+              const rateKg = Number(item.ratePerKg || 0);
+              const totalKg = isBagUnit ? bagCount * bw : bagCount;
+              const computedLineTotal = totalKg * rateKg;
+
+              return (
+                <div key={idx} className="bg-card p-3 rounded-lg border space-y-2 shadow-2xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                    {/* Product Name / Selection */}
+                    <div className="sm:col-span-5 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-medium text-muted-foreground">
+                          {item.isCustom ? 'Type Custom Product Name' : 'Select Product Variety'}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => toggleCustomItem(idx)}
+                          className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5"
+                        >
+                          {item.isCustom ? <ListFilter className="h-3 w-3" /> : <Type className="h-3 w-3" />}
+                          {item.isCustom ? 'Pick List' : '+ Custom Name'}
+                        </button>
+                      </div>
+
+                      {item.isCustom ? (
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Shankar Hybrid Mustard M-99"
+                          value={item.productName}
+                          onChange={(e) => updateItem(idx, 'productName', e.target.value)}
+                          className="w-full p-1.5 bg-background border border-primary/40 focus:border-primary rounded text-xs"
+                        />
+                      ) : (
+                        <select
+                          value={item.productId}
+                          onChange={(e) => {
+                            if (e.target.value === '__CUSTOM__') {
+                              toggleCustomItem(idx);
+                            } else {
+                              const p = products?.find((prod: any) => prod.id === e.target.value);
+                              const newItems = [...items];
+                              newItems[idx].productId = e.target.value;
+                              if (p) {
+                                newItems[idx].unit = p.unit || 'BAG';
+                                newItems[idx].bagWeight = String(p.bagWeight || 40);
+                              }
+                              setItems(newItems);
+                            }
+                          }}
+                          className="w-full p-1.5 bg-background border rounded text-xs font-semibold"
+                        >
+                          <option value="">Select Seed Variety</option>
+                          {products?.map((p: any) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.brand}) {p.bagWeight ? `- ${p.bagWeight}KG Bag` : ''}
+                            </option>
+                          ))}
+                          <option value="__CUSTOM__" className="font-bold text-primary">
+                            + Type Custom New Seed Variety...
+                          </option>
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Batch Number */}
+                    {fieldConfig.batchNumber && (
+                      <div className="sm:col-span-3 space-y-0.5">
+                        <label className="text-[10px] text-muted-foreground">Batch #</label>
+                        <input
+                          type="text"
+                          value={item.batchNumber}
+                          onChange={(e) => updateItem(idx, 'batchNumber', e.target.value)}
+                          placeholder="e.g. BATCH-2026"
+                          className="w-full p-1.5 bg-background border rounded text-xs font-mono"
+                        />
+                      </div>
+                    )}
+
+                    {/* Unit Selector */}
+                    <div className="sm:col-span-3 space-y-0.5">
+                      <label className="text-[10px] text-muted-foreground">Unit</label>
+                      <select
+                        value={item.unit || 'BAG'}
+                        onChange={(e) => updateItem(idx, 'unit', e.target.value)}
+                        className="w-full p-1.5 bg-background border rounded text-xs font-semibold"
+                      >
+                        <option value="BAG">BAG (Sacks)</option>
+                        <option value="PACKET">PACKET (Pouch)</option>
+                        <option value="KG">KG (Kilograms)</option>
+                        <option value="QUINTAL">QUINTAL (100KG)</option>
+                      </select>
+                    </div>
+
+                    {/* Remove Row Button */}
+                    <div className="sm:col-span-1 flex justify-end pt-2 sm:pt-4">
+                      <button
+                        type="button"
+                        onClick={() => removeItemRow(idx)}
+                        className="p-1 text-destructive hover:bg-destructive/10 rounded"
+                        title="Remove item row"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
 
-                  {item.isCustom ? (
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Shankar Hybrid Mustard M-99"
-                      value={item.productName}
-                      onChange={(e) => updateItem(idx, 'productName', e.target.value)}
-                      className="w-full p-1.5 bg-background border border-primary/40 focus:border-primary rounded text-xs"
-                    />
-                  ) : (
-                    <select
-                      value={item.productId}
-                      onChange={(e) => {
-                        if (e.target.value === '__CUSTOM__') {
-                          toggleCustomItem(idx);
-                        } else {
-                          updateItem(idx, 'productId', e.target.value);
-                        }
-                      }}
-                      className="w-full p-1.5 bg-background border rounded text-xs"
-                    >
-                      <option value="">Select Seed Variety</option>
-                      {products?.map((p: any) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.brand})
-                        </option>
-                      ))}
-                      <option value="__CUSTOM__" className="font-bold text-primary">
-                        + Type Custom New Seed Variety...
-                      </option>
-                    </select>
-                  )}
-                </div>
+                  {/* Dynamic Quantity & Price Controls */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-muted/40 p-2 rounded border">
+                    {isBagUnit ? (
+                      <>
+                        <div className="sm:col-span-3 space-y-0.5">
+                          <label className="text-[10px] font-medium text-muted-foreground">No. of Bags / Pieces</label>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                            placeholder="e.g. 10"
+                            className="w-full p-1 bg-background border rounded text-xs font-bold text-foreground"
+                          />
+                        </div>
+                        <div className="sm:col-span-3 space-y-0.5">
+                          <label className="text-[10px] font-medium text-muted-foreground">Bag Weight (KG/bag)</label>
+                          <input
+                            type="number"
+                            value={item.bagWeight || 40}
+                            onChange={(e) => updateItem(idx, 'bagWeight', e.target.value)}
+                            placeholder="e.g. 40"
+                            className="w-full p-1 bg-background border rounded text-xs font-bold text-foreground"
+                          />
+                        </div>
+                        <div className="sm:col-span-3 space-y-0.5">
+                          <label className="text-[10px] font-medium text-muted-foreground">Price per 1 KG (₹)</label>
+                          <input
+                            type="number"
+                            value={item.ratePerKg || 50}
+                            onChange={(e) => {
+                              updateItem(idx, 'ratePerKg', e.target.value);
+                              updateItem(idx, 'rate', Number(e.target.value) * (Number(item.bagWeight || 40)));
+                            }}
+                            placeholder="e.g. 50"
+                            className="w-full p-1 bg-background border rounded text-xs font-bold text-emerald-600"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="sm:col-span-5 space-y-0.5">
+                          <label className="text-[10px] font-medium text-muted-foreground">Total Quantity (KG)</label>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                            placeholder="e.g. 500"
+                            className="w-full p-1 bg-background border rounded text-xs font-bold text-foreground"
+                          />
+                        </div>
+                        <div className="sm:col-span-4 space-y-0.5">
+                          <label className="text-[10px] font-medium text-muted-foreground">Price per 1 KG (₹)</label>
+                          <input
+                            type="number"
+                            value={item.ratePerKg || 50}
+                            onChange={(e) => {
+                              updateItem(idx, 'ratePerKg', e.target.value);
+                              updateItem(idx, 'rate', e.target.value);
+                            }}
+                            placeholder="e.g. 50"
+                            className="w-full p-1 bg-background border rounded text-xs font-bold text-emerald-600"
+                          />
+                        </div>
+                      </>
+                    )}
 
-                {/* Batch Number (Optional Field) */}
-                {fieldConfig.batchNumber && (
-                  <div className="sm:col-span-3 space-y-0.5">
-                    <label className="text-[10px] text-muted-foreground">Batch #</label>
-                    <input
-                      type="text"
-                      value={item.batchNumber}
-                      onChange={(e) => updateItem(idx, 'batchNumber', e.target.value)}
-                      className="w-full p-1.5 bg-background border rounded text-xs font-mono"
-                    />
+                    <div className="sm:col-span-3 text-right">
+                      <div className="text-[10px] text-muted-foreground">
+                        {isBagUnit ? `${bagCount} Bags × ${bw}KG = ${totalKg} KG Total` : `${totalKg} KG Total`}
+                      </div>
+                      <div className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
+                        Total: {formatCurrency(computedLineTotal)}
+                      </div>
+                    </div>
                   </div>
-                )}
-
-                {/* Quantity */}
-                <div className="sm:col-span-2 space-y-0.5">
-                  <label className="text-[10px] text-muted-foreground">Qty</label>
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                    className="w-full p-1.5 bg-background border rounded text-xs font-semibold"
-                  />
                 </div>
-
-                {/* Rate (Optional Field) */}
-                {fieldConfig.rate && (
-                  <div className="sm:col-span-1 space-y-0.5">
-                    <label className="text-[10px] text-muted-foreground">Rate (₹)</label>
-                    <input
-                      type="number"
-                      value={item.rate}
-                      onChange={(e) => updateItem(idx, 'rate', e.target.value)}
-                      className="w-full p-1.5 bg-background border rounded text-xs"
-                    />
-                  </div>
-                )}
-
-                {/* Remove Row Button */}
-                <div className="sm:col-span-1 flex justify-end pt-2 sm:pt-4">
-                  <button
-                    type="button"
-                    onClick={() => removeItemRow(idx)}
-                    className="p-1 text-destructive hover:bg-destructive/10 rounded"
-                    title="Remove item"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Modal Footer Controls */}

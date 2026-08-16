@@ -23,6 +23,7 @@ export interface Product {
   category?: Category;
   hsn: string;
   unit: string;
+  bagWeight?: number;
   minimumStock: number;
   description?: string;
   image?: string;

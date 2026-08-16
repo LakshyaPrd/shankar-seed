@@ -52,7 +52,7 @@ export class ProductsController {
     const categoryId = req.query.categoryId ? String(req.query.categoryId) : undefined;
     const status = req.query.status ? String(req.query.status) : undefined;
     const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 10);
+    const limit = Number(req.query.limit || 1000);
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -72,7 +72,7 @@ export class ProductsController {
         include: { category: true, inventories: true },
         skip,
         take: limit,
-        orderBy: { name: 'asc' },
+        orderBy: { createdAt: 'desc' },
       }),
       prisma.product.count({ where }),
     ]);
@@ -136,6 +136,7 @@ export class ProductsController {
         categoryId: catObjId,
         hsn: String(req.body.hsn || '12091000'),
         unit: String(req.body.unit || 'KG'),
+        bagWeight: Number(req.body.bagWeight || 40),
         minimumStock: Number(req.body.minimumStock || 10),
         description: String(req.body.description || ''),
         barcode: req.body.barcode ? String(req.body.barcode) : 'BAR-' + Date.now(),
@@ -150,7 +151,7 @@ export class ProductsController {
       await db.collection('inventory').insertOne({
         productId: pId,
         batchNumber: 'BATCH-2026-01',
-        warehouse: 'Branch 1 - Guntur Main',
+        warehouse: 'Vishwakarma Industrial Area',
         currentStock: 0,
         incoming: 0,
         outgoing: 0,
@@ -159,13 +160,22 @@ export class ProductsController {
         updatedAt: new Date(),
       });
 
-      // Send multi-channel notification
-      const { NotificationService } = await import('../services/notification.service');
-      await NotificationService.send({
-        type: 'PRODUCT_CREATED',
-        title: '🌱 New Seed Variety Created',
-        message: `Seed variety '${prodName}' (${req.body.brand || 'Shankar Seeds'}) was added to the product catalog.`,
+      // Send multi-channel notification in background asynchronously (non-blocking)
+      import('../services/notification.service').then(({ NotificationService }) => {
+        NotificationService.send({
+          type: 'PRODUCT_CREATED',
+          title: '🌱 New Seed Variety Created',
+          message: `Seed variety '${prodName}' (${req.body.brand || 'Shankar Seeds'}) was added to the product catalog.`,
+        }).catch((err) => console.error('Notification error:', err));
       });
+
+      const data = await prisma.product.findUnique({ where: { id: pId.toString() }, include: { category: true } });
+      return res.json({ success: true, data });
+    } catch (e: any) {
+      console.error('Product Create Error:', e);
+      return res.status(500).json({ success: false, message: e.message || 'Failed to create product' });
+    }
+  }
 
       const data = await prisma.product.findUnique({ where: { id: pId.toString() }, include: { category: true } });
       return res.json({ success: true, data });

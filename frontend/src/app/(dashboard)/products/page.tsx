@@ -24,7 +24,8 @@ export default function ProductsPage() {
     categoryId: '',
     categoryName: '',
     hsn: '12091000',
-    unit: 'KG',
+    unit: 'BAG',
+    bagWeight: '40',
     minimumStock: '50',
     barcode: '',
     description: '',
@@ -33,9 +34,11 @@ export default function ProductsPage() {
   const { data: products, isLoading } = useQuery({
     queryKey: ['products'],
     queryFn: async () => {
-      const res: any = await api.get('/products');
+      const res: any = await api.get('/products?limit=1000');
       return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     },
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: categories } = useQuery({
@@ -55,8 +58,11 @@ export default function ProductsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-list'] });
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-low-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       setIsModalOpen(false);
       setEditingProduct(null);
@@ -67,7 +73,8 @@ export default function ProductsPage() {
         categoryId: '',
         categoryName: '',
         hsn: '12091000',
-        unit: 'KG',
+        unit: 'BAG',
+        bagWeight: '40',
         minimumStock: '50',
         barcode: '',
         description: '',
@@ -92,7 +99,8 @@ export default function ProductsPage() {
       categoryId: prod.categoryId || (prod.category?.id || ''),
       categoryName: '',
       hsn: prod.hsn || '12091000',
-      unit: prod.unit || 'KG',
+      unit: prod.unit || 'BAG',
+      bagWeight: String(prod.bagWeight || 40),
       minimumStock: String(prod.minimumStock || 50),
       barcode: prod.barcode || '',
       description: prod.description || '',
@@ -104,6 +112,8 @@ export default function ProductsPage() {
     e.preventDefault();
     createMutation.mutate({
       ...formData,
+      minimumStock: Number(formData.minimumStock || 0),
+      bagWeight: (formData.unit === 'BAG' || formData.unit === 'PACKET') ? Number(formData.bagWeight || 40) : 1,
       categoryId: isCustomCategory ? '' : formData.categoryId || (categories?.[0]?.id || undefined),
       categoryName: isCustomCategory ? formData.categoryName : undefined,
     });
@@ -135,8 +145,15 @@ export default function ProductsPage() {
     },
     {
       accessorKey: 'unit',
-      header: 'Unit',
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.unit}</span>,
+      header: 'Unit / Bag Weight',
+      cell: ({ row }) => {
+        const u = row.original.unit;
+        const bw = row.original.bagWeight;
+        if ((u === 'BAG' || u === 'PACKET') && bw) {
+          return <span className="font-bold text-foreground">{u} ({bw} KG / {u.toLowerCase()})</span>;
+        }
+        return <span className="font-semibold text-foreground">{u}</span>;
+      },
     },
     {
       accessorKey: 'totalStock',
@@ -215,7 +232,8 @@ export default function ProductsPage() {
               categoryId: '',
               categoryName: '',
               hsn: '12091000',
-              unit: 'KG',
+              unit: 'BAG',
+              bagWeight: '40',
               minimumStock: '50',
               barcode: '',
               description: '',
@@ -343,16 +361,48 @@ export default function ProductsPage() {
                 <select
                   value={formData.unit}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  className="w-full p-2 bg-background border rounded-md"
+                  className="w-full p-2 bg-background border rounded-md font-semibold"
                 >
+                  <option value="BAG">Bag (Bags / Sacks)</option>
+                  <option value="PACKET">Packet (Retail Pouch / Pack)</option>
                   <option value="KG">Kilogram (KG)</option>
-                  <option value="PACKET">Packet (PKT)</option>
-                  <option value="BAG">Bag (40KG)</option>
-                  <option value="QUINTAL">Quintal (QTL)</option>
+                  <option value="QUINTAL">Quintal (QTL - 100KG)</option>
                   <option value="GRAM">Gram (GM)</option>
                 </select>
               </div>
             )}
+
+            {(formData.unit === 'BAG' || formData.unit === 'PACKET') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">Bag / Pack Net Weight (KG per Bag) *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    required
+                    value={formData.bagWeight}
+                    onChange={(e) => setFormData({ ...formData, bagWeight: e.target.value })}
+                    placeholder="e.g. 40"
+                    className="w-full p-2 bg-background border rounded-md font-bold text-foreground"
+                  />
+                  <span className="self-center font-bold text-xs text-muted-foreground">KG</span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  {['5', '10', '25', '40', '50'].map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, bagWeight: w })}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded border transition ${
+                        formData.bagWeight === w ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                    >
+                      {w} KG
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isFieldVisible('minimumStock') && (
               <div className="space-y-1">
                 <label className="font-medium text-muted-foreground">{getFieldLabel('minimumStock', 'Minimum Stock Alert Limit')}</label>

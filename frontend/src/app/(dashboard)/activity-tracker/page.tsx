@@ -117,8 +117,10 @@ export default function ActivityTrackerPage() {
   const [logForm, setLogForm] = useState({
     workerId: '',
     taskType: 'Sack / Bag Packing',
+    unitType: 'BAG',
     quantity: '100',
-    unit: 'Sacks (40KG)',
+    bagWeight: '40',
+    unit: 'BAG (40KG)',
     ratePerUnit: '5',
     branch: 'Vishwakarma Industrial Area',
     date: new Date().toISOString().split('T')[0],
@@ -136,9 +138,13 @@ export default function ActivityTrackerPage() {
 
   const handleLogSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedWorker = workersList.find((w) => w.id === logForm.workerId) || { name: logForm.workerId || 'Worker' };
+    const selectedWorker = combinedWorkers.find((w) => w.id === logForm.workerId) || { name: logForm.workerId || 'Worker' };
+    const isBag = logForm.unitType === 'BAG' || logForm.unitType === 'PACKET';
     const qty = Number(logForm.quantity || 0);
+    const bw = Number(logForm.bagWeight || 40);
     const rate = Number(logForm.ratePerUnit || 0);
+    const totalWeightKg = isBag ? qty * bw : qty;
+    const unitDisplay = isBag ? `${logForm.unitType} (${bw}KG/bag)` : 'KG';
 
     const newEntry: ActivityEntry = {
       id: `act-${Date.now()}`,
@@ -146,13 +152,13 @@ export default function ActivityTrackerPage() {
       workerName: selectedWorker.name,
       taskType: logForm.taskType,
       quantity: qty,
-      unit: logForm.unit,
+      unit: unitDisplay,
       ratePerUnit: rate,
       totalEarnings: qty * rate,
       branch: logForm.branch,
       date: logForm.date,
       shift: logForm.shift,
-      remarks: logForm.remarks,
+      remarks: logForm.remarks ? `${logForm.remarks} (${totalWeightKg} KG Net)` : `Net Work Weight: ${totalWeightKg} KG`,
     };
 
     setActivitiesList([newEntry, ...activitiesList]);
@@ -160,8 +166,10 @@ export default function ActivityTrackerPage() {
     setLogForm({
       workerId: '',
       taskType: 'Sack / Bag Packing',
+      unitType: 'BAG',
       quantity: '100',
-      unit: 'Sacks (40KG)',
+      bagWeight: '40',
+      unit: 'BAG (40KG)',
       ratePerUnit: '5',
       branch: 'Vishwakarma Industrial Area',
       date: new Date().toISOString().split('T')[0],
@@ -520,50 +528,94 @@ export default function ActivityTrackerPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Quantity Completed *</label>
+              <label className="font-medium text-muted-foreground">Work Measurement Unit *</label>
+              <select
+                value={logForm.unitType || 'BAG'}
+                onChange={(e) => setLogForm({ ...logForm, unitType: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md font-semibold"
+              >
+                <option value="BAG">BAG (Bags / Sacks)</option>
+                <option value="PACKET">PACKET (Retail Pouches)</option>
+                <option value="KG">KG (Kilograms)</option>
+                <option value="QUINTAL">QUINTAL (100KG)</option>
+                <option value="HOURS">HOURS (Time Rate)</option>
+              </select>
+            </div>
+
+            {(logForm.unitType === 'BAG' || logForm.unitType === 'PACKET') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">Bag Weight (KG per Bag) *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    required
+                    value={logForm.bagWeight}
+                    onChange={(e) => setLogForm({ ...logForm, bagWeight: e.target.value })}
+                    placeholder="e.g. 40"
+                    className="w-full p-2 bg-background border rounded-md font-bold"
+                  />
+                  <span className="self-center font-bold text-xs text-muted-foreground">KG</span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  {['5', '10', '25', '40', '50'].map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setLogForm({ ...logForm, bagWeight: w })}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded border transition ${
+                        logForm.bagWeight === w ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                    >
+                      {w} KG
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">
+                {(logForm.unitType === 'BAG' || logForm.unitType === 'PACKET') ? 'Number of Bags Completed *' : 'Quantity Completed *'}
+              </label>
               <input
                 type="number"
                 required
                 value={logForm.quantity}
                 onChange={(e) => setLogForm({ ...logForm, quantity: e.target.value })}
                 placeholder="e.g. 100"
-                className="w-full p-2 bg-background border rounded-md font-bold text-primary"
+                className="w-full p-2 bg-background border rounded-md font-bold text-primary text-sm"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Unit *</label>
-              <select
-                value={logForm.unit}
-                onChange={(e) => setLogForm({ ...logForm, unit: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              >
-                <option value="Sacks (40KG)">Sacks (40KG)</option>
-                <option value="Bags">Bags</option>
-                <option value="Packets">Packets</option>
-                <option value="Quintals">Quintals</option>
-                <option value="Hours">Hours</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Rate / Unit Pay (₹) *</label>
+              <label className="font-medium text-muted-foreground">
+                {(logForm.unitType === 'BAG' || logForm.unitType === 'PACKET') ? 'Wage Rate per Bag (₹/bag) *' : 'Wage Rate per Unit (₹/unit) *'}
+              </label>
               <input
                 type="number"
                 required
                 value={logForm.ratePerUnit}
                 onChange={(e) => setLogForm({ ...logForm, ratePerUnit: e.target.value })}
                 placeholder="e.g. 5"
-                className="w-full p-2 bg-background border rounded-md"
+                className="w-full p-2 bg-background border rounded-md font-bold text-emerald-600 text-sm"
               />
             </div>
           </div>
 
           <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-between font-bold">
-            <span className="text-emerald-800 dark:text-emerald-300">Total Calculated Wage Earned:</span>
-            <span className="text-emerald-600 dark:text-emerald-400 text-base">
+            <div>
+              <span className="text-emerald-800 dark:text-emerald-300 block text-xs">Total Calculated Wage Earned</span>
+              {(logForm.unitType === 'BAG' || logForm.unitType === 'PACKET') && (
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  {Number(logForm.quantity || 0)} Bags × {Number(logForm.bagWeight || 40)} KG = {(Number(logForm.quantity || 0) * Number(logForm.bagWeight || 40)).toLocaleString('en-IN')} KG Net Work
+                </span>
+              )}
+            </div>
+            <span className="text-emerald-600 dark:text-emerald-400 text-lg font-black">
               ₹{(Number(logForm.quantity || 0) * Number(logForm.ratePerUnit || 0)).toLocaleString('en-IN')}
             </span>
           </div>
