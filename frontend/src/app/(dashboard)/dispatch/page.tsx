@@ -51,7 +51,7 @@ export default function DispatchPage() {
   });
 
   const [formData, setFormData] = useState({
-    billNumber: `SBB/26-27/${Math.floor(1000 + Math.random() * 9000)}`,
+    billNumber: 'SBB/26-27/',
     date: new Date().toISOString().split('T')[0],
     customerId: '',
     partyName: '',
@@ -107,7 +107,7 @@ export default function DispatchPage() {
       setIsModalOpen(false);
       setErrorMessage('');
       setFormData({
-        billNumber: `SBB/26-27/${Math.floor(1000 + Math.random() * 9000)}`,
+        billNumber: 'SBB/26-27/',
         date: new Date().toISOString().split('T')[0],
         customerId: '',
         partyName: '',
@@ -528,7 +528,7 @@ export default function DispatchPage() {
                       const cleanVal = e.target.value.replace(/^SBB\/26-27\//i, '');
                       setFormData({ ...formData, billNumber: `SBB/26-27/${cleanVal}` });
                     }}
-                    placeholder="4293"
+                    placeholder="Type bill number..."
                     className="w-full p-2 bg-transparent outline-none font-mono font-bold text-xs"
                   />
                 </div>
