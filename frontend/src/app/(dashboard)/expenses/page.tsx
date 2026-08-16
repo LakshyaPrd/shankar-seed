@@ -9,8 +9,10 @@ import { Expense } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { DataTable } from '@/components/ui/data-table';
 import { Modal } from '@/components/ui/modal';
+import { useFormCustomization } from '@/lib/useFormCustomization';
 
 export default function ExpensesPage() {
+  const { isFieldVisible, getFieldLabel } = useFormCustomization('expense-form');
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -144,84 +146,96 @@ export default function ExpensesPage() {
         description="Record a new company expense entry"
       >
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Expense Category *</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              >
-                <option value="FUEL">FUEL (Diesel / Transport)</option>
-                <option value="LOADING">LOADING (Labour)</option>
-                <option value="UNLOADING">UNLOADING (Labour)</option>
-                <option value="TEA">TEA & REFRESHMENT</option>
-                <option value="OFFICE">OFFICE SUPPLIES</option>
-                <option value="ELECTRICITY">ELECTRICITY & UTILITIES</option>
-                <option value="MISC">MISCELLANEOUS</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isFieldVisible('category') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('category', 'Expense Category')} *</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                >
+                  <option value="FUEL">FUEL (Diesel / Transport)</option>
+                  <option value="LOADING">LOADING (Labour)</option>
+                  <option value="UNLOADING">UNLOADING (Labour)</option>
+                  <option value="TEA">TEA & REFRESHMENT</option>
+                  <option value="OFFICE">OFFICE SUPPLIES</option>
+                  <option value="ELECTRICITY">ELECTRICITY & UTILITIES</option>
+                  <option value="MISC">MISCELLANEOUS</option>
+                </select>
+              </div>
+            )}
 
+            {isFieldVisible('amount') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('amount', 'Amount (₹)')} *</label>
+                <input
+                  type="number"
+                  required
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  placeholder="e.g. 2500"
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
+          </div>
+
+          {isFieldVisible('title') && (
             <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Amount (₹) *</label>
+              <label className="font-medium text-muted-foreground">{getFieldLabel('title', 'Expense Title / Description')} *</label>
               <input
-                type="number"
+                type="text"
                 required
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="e.g. 2500"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="e.g. Diesel for Vijayawada Dispatch Truck"
                 className="w-full p-2 bg-background border rounded-md"
               />
             </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isFieldVisible('date') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('date', 'Expense Date')} *</label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
+
+            {isFieldVisible('paymentMode') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('paymentMode', 'Payment Mode')}</label>
+                <select
+                  value={formData.paymentMode}
+                  onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                >
+                  <option value="CASH">CASH</option>
+                  <option value="UPI">UPI / GPay / PhonePe</option>
+                  <option value="BANK_TRANSFER">BANK TRANSFER (NEFT/RTGS)</option>
+                </select>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground">Expense Title / Description *</label>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="e.g. Diesel for Vijayawada Dispatch Truck"
-              className="w-full p-2 bg-background border rounded-md"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          {isFieldVisible('remarks') && (
             <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Expense Date *</label>
+              <label className="font-medium text-muted-foreground">{getFieldLabel('remarks', 'Remarks')}</label>
               <input
-                type="date"
-                required
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                type="text"
+                value={formData.remarks}
+                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                 className="w-full p-2 bg-background border rounded-md"
               />
             </div>
-
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Payment Mode</label>
-              <select
-                value={formData.paymentMode}
-                onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              >
-                <option value="CASH">CASH</option>
-                <option value="UPI">UPI / GPay / PhonePe</option>
-                <option value="BANK_TRANSFER">BANK TRANSFER (NEFT/RTGS)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground">Remarks</label>
-            <input
-              type="text"
-              value={formData.remarks}
-              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-              className="w-full p-2 bg-background border rounded-md"
-            />
-          </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button

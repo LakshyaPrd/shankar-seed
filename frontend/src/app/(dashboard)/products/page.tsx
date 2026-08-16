@@ -8,8 +8,10 @@ import { api } from '@/lib/api';
 import { Product } from '@/types';
 import { DataTable } from '@/components/ui/data-table';
 import { Modal } from '@/components/ui/modal';
+import { useFormCustomization } from '@/lib/useFormCustomization';
 
 export default function ProductsPage() {
+  const { isFieldVisible, getFieldLabel } = useFormCustomization('product-form');
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -240,129 +242,143 @@ export default function ProductsPage() {
         description="Creates official product record in catalog and tracks minimum inventory thresholds"
       >
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Product Variety Name *</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g. Shankar Hybrid Paddy 505"
-                className="w-full p-2 bg-background border rounded-md font-semibold"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Brand / Company *</label>
-              <input
-                type="text"
-                required
-                value={formData.brand}
-                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="font-medium text-muted-foreground">
-                  {isCustomCategory ? 'Type New Category Name *' : 'Seed Category *'}
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomCategory(!isCustomCategory)}
-                  className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5"
-                >
-                  {isCustomCategory ? <ListFilter className="h-3 w-3" /> : <Type className="h-3 w-3" />}
-                  {isCustomCategory ? 'Pick List' : '+ Add New Category'}
-                </button>
-              </div>
-
-              {isCustomCategory ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isFieldVisible('name') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('name', 'Product Variety Name')} *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Hybrid Vegetable Seeds"
-                  value={formData.categoryName}
-                  onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
-                  className="w-full p-2 bg-background border border-primary/40 focus:border-primary rounded-md"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g. Shankar Hybrid Paddy 505"
+                  className="w-full p-2 bg-background border rounded-md font-semibold"
                 />
-              ) : (
+              </div>
+            )}
+            {isFieldVisible('brand') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('brand', 'Brand / Company')} *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.brand}
+                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isFieldVisible('categoryId') && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-medium text-muted-foreground">
+                    {isCustomCategory ? 'Type New Category Name *' : `${getFieldLabel('categoryId', 'Seed Category')} *`}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomCategory(!isCustomCategory)}
+                    className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5"
+                  >
+                    {isCustomCategory ? <ListFilter className="h-3 w-3" /> : <Type className="h-3 w-3" />}
+                    {isCustomCategory ? 'Pick List' : '+ Add New Category'}
+                  </button>
+                </div>
+
+                {isCustomCategory ? (
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Hybrid Vegetable Seeds"
+                    value={formData.categoryName}
+                    onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
+                    className="w-full p-2 bg-background border border-primary/40 focus:border-primary rounded-md"
+                  />
+                ) : (
+                  <select
+                    value={formData.categoryId}
+                    onChange={(e) => {
+                      if (e.target.value === '__NEW__') {
+                        setIsCustomCategory(true);
+                      } else {
+                        setFormData({ ...formData, categoryId: e.target.value });
+                      }
+                    }}
+                    className="w-full p-2 bg-background border rounded-md"
+                  >
+                    <option value="">Select Category</option>
+                    {categories?.map((cat: any) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                    <option value="__NEW__" className="font-bold text-primary">
+                      + Type Custom New Category...
+                    </option>
+                  </select>
+                )}
+              </div>
+            )}
+
+            {isFieldVisible('hsn') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('hsn', 'HSN Code')} *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.hsn}
+                  onChange={(e) => setFormData({ ...formData, hsn: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md font-mono"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isFieldVisible('unit') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('unit', 'Unit of Measure')} *</label>
                 <select
-                  value={formData.categoryId}
-                  onChange={(e) => {
-                    if (e.target.value === '__NEW__') {
-                      setIsCustomCategory(true);
-                    } else {
-                      setFormData({ ...formData, categoryId: e.target.value });
-                    }
-                  }}
+                  value={formData.unit}
+                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                   className="w-full p-2 bg-background border rounded-md"
                 >
-                  <option value="">Select Category</option>
-                  {categories?.map((cat: any) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                  <option value="__NEW__" className="font-bold text-primary">
-                    + Type Custom New Category...
-                  </option>
+                  <option value="KG">Kilogram (KG)</option>
+                  <option value="PACKET">Packet (PKT)</option>
+                  <option value="BAG">Bag (40KG)</option>
+                  <option value="QUINTAL">Quintal (QTL)</option>
+                  <option value="GRAM">Gram (GM)</option>
                 </select>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">HSN Code *</label>
-              <input
-                type="text"
-                required
-                value={formData.hsn}
-                onChange={(e) => setFormData({ ...formData, hsn: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md font-mono"
-              />
-            </div>
+              </div>
+            )}
+            {isFieldVisible('minimumStock') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('minimumStock', 'Minimum Stock Alert Limit')}</label>
+                <input
+                  type="number"
+                  required
+                  value={formData.minimumStock}
+                  onChange={(e) => setFormData({ ...formData, minimumStock: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {isFieldVisible('description') && (
             <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Unit of Measure *</label>
-              <select
-                value={formData.unit}
-                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              >
-                <option value="KG">Kilogram (KG)</option>
-                <option value="PACKET">Packet (PKT)</option>
-                <option value="BAG">Bag (40KG)</option>
-                <option value="QUINTAL">Quintal (QTL)</option>
-                <option value="GRAM">Gram (GM)</option>
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Minimum Stock Alert Limit</label>
-              <input
-                type="number"
-                required
-                value={formData.minimumStock}
-                onChange={(e) => setFormData({ ...formData, minimumStock: e.target.value })}
+              <label className="font-medium text-muted-foreground">{getFieldLabel('description', 'Variety Description / Characteristics')}</label>
+              <textarea
+                rows={2}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="e.g. 120-day high disease resistance hybrid paddy"
                 className="w-full p-2 bg-background border rounded-md"
               />
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground">Variety Description / Characteristics</label>
-            <textarea
-              rows={2}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="e.g. 120-day high disease resistance hybrid paddy"
-              className="w-full p-2 bg-background border rounded-md"
-            />
-          </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button

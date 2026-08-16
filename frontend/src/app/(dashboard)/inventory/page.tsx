@@ -9,8 +9,10 @@ import { Inventory } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { DataTable } from '@/components/ui/data-table';
 import { Modal } from '@/components/ui/modal';
+import { useFormCustomization } from '@/lib/useFormCustomization';
 
 export default function InventoryPage() {
+  const { isFieldVisible, getFieldLabel } = useFormCustomization('inventory-form');
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'all' | 'auto-created' | 'low-stock' | 'movements'>('all');
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
@@ -373,83 +375,96 @@ export default function InventoryPage() {
         description="Add or deduct stock for physical audit verification"
       >
         <form onSubmit={handleAdjustSubmit} className="space-y-4 text-xs">
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground">Select Product Variety *</label>
-            <select
-              required
-              value={adjustForm.productId}
-              onChange={(e) => setAdjustForm({ ...adjustForm, productId: e.target.value })}
-              className="w-full p-2 bg-background border rounded-md"
-            >
-              <option value="">Select Seed Product</option>
-              {products?.map((p: any) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.brand})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          {isFieldVisible('productId') && (
             <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Adjustment Type *</label>
+              <label className="font-medium text-muted-foreground">{getFieldLabel('productId', 'Select Product Variety')} *</label>
               <select
-                value={adjustForm.type}
-                onChange={(e) => setAdjustForm({ ...adjustForm, type: e.target.value })}
+                required
+                value={adjustForm.productId}
+                onChange={(e) => setAdjustForm({ ...adjustForm, productId: e.target.value })}
                 className="w-full p-2 bg-background border rounded-md"
               >
-                <option value="IN">IN (+ Stock Addition)</option>
-                <option value="OUT">OUT (- Stock Reduction)</option>
+                <option value="">Select Seed Product</option>
+                {products?.map((p: any) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.brand})
+                  </option>
+                ))}
               </select>
             </div>
+          )}
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isFieldVisible('type') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('type', 'Adjustment Type')} *</label>
+                <select
+                  value={adjustForm.type}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, type: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                >
+                  <option value="IN">IN (+ Stock Addition)</option>
+                  <option value="OUT">OUT (- Stock Reduction)</option>
+                </select>
+              </div>
+            )}
+
+            {isFieldVisible('quantity') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('quantity', 'Quantity')} *</label>
+                <input
+                  type="number"
+                  required
+                  value={adjustForm.quantity}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, quantity: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isFieldVisible('batchNumber') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('batchNumber', 'Batch Number')} *</label>
+                <input
+                  type="text"
+                  required
+                  value={adjustForm.batchNumber}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, batchNumber: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md font-mono"
+                />
+              </div>
+            )}
+
+            {isFieldVisible('warehouse') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('warehouse', 'Select Branch / Warehouse')} *</label>
+                <select
+                  required
+                  value={adjustForm.warehouse}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, warehouse: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                >
+                  <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
+                  <option value="Johri Bazar">Johri Bazar</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {isFieldVisible('remarks') && (
             <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Quantity *</label>
-              <input
-                type="number"
-                required
-                value={adjustForm.quantity}
-                onChange={(e) => setAdjustForm({ ...adjustForm, quantity: e.target.value })}
+              <label className="font-medium text-muted-foreground">{getFieldLabel('remarks', 'Audit Remarks / Note')}</label>
+              <textarea
+                rows={2}
+                value={adjustForm.remarks}
+                onChange={(e) => setAdjustForm({ ...adjustForm, remarks: e.target.value })}
+                placeholder="Physical audit verification note..."
                 className="w-full p-2 bg-background border rounded-md"
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Batch Number *</label>
-              <input
-                type="text"
-                required
-                value={adjustForm.batchNumber}
-                onChange={(e) => setAdjustForm({ ...adjustForm, batchNumber: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md font-mono"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Select Branch / Warehouse *</label>
-              <select
-                required
-                value={adjustForm.warehouse}
-                onChange={(e) => setAdjustForm({ ...adjustForm, warehouse: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              >
-                <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
-                <option value="Johri Bazar">Johri Bazar</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground">Remarks / Audit Note</label>
-            <input
-              type="text"
-              value={adjustForm.remarks}
-              onChange={(e) => setAdjustForm({ ...adjustForm, remarks: e.target.value })}
-              className="w-full p-2 bg-background border rounded-md"
-            />
-          </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button

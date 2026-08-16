@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import {
@@ -170,6 +170,27 @@ export default function ActivityTrackerPage() {
     });
   };
 
+  const [deletedWorkerIds, setDeletedWorkerIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedWorkers = localStorage.getItem('erp_activity_workers');
+      if (savedWorkers) {
+        try {
+          const parsed = JSON.parse(savedWorkers);
+          if (Array.isArray(parsed) && parsed.length > 0) setWorkersList(parsed);
+        } catch (e) {}
+      }
+      const savedDeleted = localStorage.getItem('erp_deleted_workers');
+      if (savedDeleted) {
+        try {
+          const parsed = JSON.parse(savedDeleted);
+          if (Array.isArray(parsed)) setDeletedWorkerIds(parsed);
+        } catch (e) {}
+      }
+    }
+  }, []);
+
   const handleWorkerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newWorker: Worker = {
@@ -179,16 +200,36 @@ export default function ActivityTrackerPage() {
       designation: workerForm.designation,
       dailyRate: Number(workerForm.dailyRate || 450),
     };
-    setWorkersList([...workersList, newWorker]);
+    const updated = [...workersList, newWorker];
+    setWorkersList(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('erp_activity_workers', JSON.stringify(updated));
+    }
     setIsWorkerModalOpen(false);
     setWorkerForm({ name: '', phone: '', designation: 'Warehouse Labourer', dailyRate: '450' });
+  };
+
+  const deleteWorker = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete worker profile for '${name}'?`)) {
+      const updatedLocalWorkers = workersList.filter((w) => w.id !== id);
+      setWorkersList(updatedLocalWorkers);
+      const updatedDeletedIds = [...deletedWorkerIds, id];
+      setDeletedWorkerIds(updatedDeletedIds);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('erp_activity_workers', JSON.stringify(updatedLocalWorkers));
+        localStorage.setItem('erp_deleted_workers', JSON.stringify(updatedDeletedIds));
+      }
+
+      api.delete(`/employees/${id}`).catch(() => {});
+    }
   };
 
   const deleteActivity = (id: string) => {
     setActivitiesList(activitiesList.filter((a) => a.id !== id));
   };
 
-  // Combine fetched backend employees with custom worker list
+  // Combine fetched backend employees with custom worker list, excluding deleted workers
   const combinedWorkers = [
     ...workersList,
     ...(employeesRes || []).map((e: any) => ({
@@ -198,7 +239,7 @@ export default function ActivityTrackerPage() {
       designation: e.designation,
       dailyRate: Math.round((e.salary || 15000) / 30),
     })),
-  ];
+  ].filter((w) => !deletedWorkerIds.includes(w.id));
 
   // Calculated Stats
   const totalSacksPacked = activitiesList
@@ -389,9 +430,18 @@ export default function ActivityTrackerPage() {
                       <p className="text-[11px] text-muted-foreground">{worker.designation}</p>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-500/10 text-emerald-600">
-                    ACTIVE
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-500/10 text-emerald-600">
+                      ACTIVE
+                    </span>
+                    <button
+                      onClick={() => deleteWorker(worker.id, worker.name)}
+                      className="p-1 text-destructive hover:bg-destructive/10 rounded transition"
+                      title="Delete worker profile"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t text-xs">

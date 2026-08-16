@@ -25,8 +25,10 @@ import { Dispatch } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { DataTable } from '@/components/ui/data-table';
 import { Modal } from '@/components/ui/modal';
+import { useFormCustomization } from '@/lib/useFormCustomization';
 
 export default function DispatchPage() {
+  const { isFieldVisible, getFieldLabel } = useFormCustomization('dispatch-form');
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -511,55 +513,63 @@ export default function DispatchPage() {
 
           {/* Primary Form Inputs - Fully Responsive Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Bill / Gate Pass Number *</label>
-              <input
-                type="text"
-                required
-                value={formData.billNumber}
-                onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md font-mono"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Dispatch Date *</label>
-              <input
-                type="date"
-                required
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Party / Customer Name *</label>
-              <input
-                type="text"
-                required
-                value={formData.partyName}
-                onChange={(e) => setFormData({ ...formData, partyName: e.target.value })}
-                placeholder="Dealer or Farm Party Name"
-                className="w-full p-2 bg-background border rounded-md"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Source Branch / Warehouse *</label>
-              <select
-                value={formData.warehouse}
-                onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md font-semibold"
-              >
-                <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
-                <option value="Johri Bazar">Johri Bazar</option>
-              </select>
-            </div>
-
-            {fieldConfig.transportName && (
+            {isFieldVisible('billNumber') && (
               <div className="space-y-1">
-                <label className="font-medium text-muted-foreground">Transport Agency</label>
+                <label className="font-medium text-muted-foreground">{getFieldLabel('billNumber', 'Bill / Gate Pass Number')} *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.billNumber}
+                  onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md font-mono"
+                />
+              </div>
+            )}
+
+            {isFieldVisible('date') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('date', 'Dispatch Date')} *</label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
+
+            {isFieldVisible('partyName') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('partyName', 'Party / Customer Name')} *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.partyName}
+                  onChange={(e) => setFormData({ ...formData, partyName: e.target.value })}
+                  placeholder="Dealer or Farm Party Name"
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
+
+            {isFieldVisible('warehouse') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('warehouse', 'Source Branch / Warehouse')} *</label>
+                <select
+                  value={formData.warehouse}
+                  onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md font-semibold"
+                >
+                  <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
+                  <option value="Johri Bazar">Johri Bazar</option>
+                </select>
+              </div>
+            )}
+
+            {isFieldVisible('transportName') && fieldConfig.transportName && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('transportName', 'Transport Agency')}</label>
                 <input
                   type="text"
                   value={formData.transportName}
@@ -569,9 +579,9 @@ export default function DispatchPage() {
               </div>
             )}
 
-            {fieldConfig.driverName && (
+            {isFieldVisible('driverName') && fieldConfig.driverName && (
               <div className="space-y-1">
-                <label className="font-medium text-muted-foreground">Driver Name</label>
+                <label className="font-medium text-muted-foreground">{getFieldLabel('driverName', 'Driver Name')}</label>
                 <input
                   type="text"
                   value={formData.driverName}
@@ -581,9 +591,9 @@ export default function DispatchPage() {
               </div>
             )}
 
-            {fieldConfig.vehicleNumber && (
+            {isFieldVisible('vehicleNumber') && fieldConfig.vehicleNumber && (
               <div className="space-y-1">
-                <label className="font-medium text-muted-foreground">Vehicle Number</label>
+                <label className="font-medium text-muted-foreground">{getFieldLabel('vehicleNumber', 'Vehicle Number')}</label>
                 <input
                   type="text"
                   value={formData.vehicleNumber}
@@ -594,9 +604,9 @@ export default function DispatchPage() {
               </div>
             )}
 
-            {fieldConfig.mobileNumber && (
+            {isFieldVisible('mobileNumber') && fieldConfig.mobileNumber && (
               <div className="space-y-1">
-                <label className="font-medium text-muted-foreground">Driver Phone Number</label>
+                <label className="font-medium text-muted-foreground">{getFieldLabel('mobileNumber', 'Driver Phone Number')}</label>
                 <input
                   type="text"
                   value={formData.mobileNumber}
@@ -606,9 +616,9 @@ export default function DispatchPage() {
               </div>
             )}
 
-            {fieldConfig.destination && (
+            {isFieldVisible('destination') && fieldConfig.destination && (
               <div className="space-y-1">
-                <label className="font-medium text-muted-foreground">Destination City / Market</label>
+                <label className="font-medium text-muted-foreground">{getFieldLabel('destination', 'Destination City / Market')}</label>
                 <input
                   type="text"
                   value={formData.destination}
@@ -619,9 +629,9 @@ export default function DispatchPage() {
             )}
           </div>
 
-          {fieldConfig.remarks && (
+          {isFieldVisible('remarks') && fieldConfig.remarks && (
             <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Dispatch Remarks / Gate Notes</label>
+              <label className="font-medium text-muted-foreground">{getFieldLabel('remarks', 'Dispatch Remarks / Gate Notes')}</label>
               <input
                 type="text"
                 value={formData.remarks}

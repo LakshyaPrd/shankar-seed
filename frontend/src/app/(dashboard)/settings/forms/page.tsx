@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings2, Plus, SlidersHorizontal, Eye, EyeOff, FileText, CheckCircle2, Trash2, Edit3, Save } from 'lucide-react';
+import { Settings2, Plus, SlidersHorizontal, Eye, EyeOff, FileText, CheckCircle2, Trash2, Edit3, Save, RotateCcw } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 
 interface FormField {
@@ -165,6 +165,7 @@ export default function FormCustomizationPage() {
     }
     if (typeof window !== 'undefined') {
       localStorage.setItem('erp_custom_forms', JSON.stringify(updatedFormsList));
+      window.dispatchEvent(new Event('erp_forms_updated'));
     }
   };
 
@@ -290,7 +291,8 @@ export default function FormCustomizationPage() {
     setTimeout(() => setSuccessMsg(''), 3500);
   };
 
-  const deleteCustomField = (fieldId: string) => {
+  const deleteField = (fieldId: string) => {
+    const fieldToDelete = selectedForm.fields.find((f) => f.id === fieldId);
     const updatedForm = {
       ...selectedForm,
       fields: selectedForm.fields.filter((f) => f.id !== fieldId),
@@ -299,6 +301,21 @@ export default function FormCustomizationPage() {
       forms.map((fm) => (fm.id === selectedForm.id ? updatedForm : fm)),
       updatedForm,
     );
+    setSuccessMsg(`Field '${fieldToDelete?.label || fieldId}' deleted! It will no longer appear when the form is opened.`);
+    setTimeout(() => setSuccessMsg(''), 3500);
+  };
+
+  const restoreDefaultFields = () => {
+    const defaultForm = initialForms.find((f) => f.id === selectedForm.id);
+    if (!defaultForm) return;
+
+    const updatedForm = { ...selectedForm, fields: [...defaultForm.fields] };
+    saveFormsState(
+      forms.map((fm) => (fm.id === selectedForm.id ? updatedForm : fm)),
+      updatedForm,
+    );
+    setSuccessMsg(`Form fields reset to default structure for '${selectedForm.name}'!`);
+    setTimeout(() => setSuccessMsg(''), 3500);
   };
 
   return (
@@ -368,7 +385,14 @@ export default function FormCustomizationPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">{selectedForm.description}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={restoreDefaultFields}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-muted text-muted-foreground font-semibold text-xs rounded hover:bg-muted/80 transition border"
+                title="Restore default fields for this form"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset Defaults
+              </button>
               <button
                 onClick={openEditFormMetaModal}
                 className="flex items-center gap-1 px-3 py-1.5 bg-secondary text-secondary-foreground border font-semibold text-xs rounded hover:bg-muted transition"
@@ -388,70 +412,80 @@ export default function FormCustomizationPage() {
           <div className="space-y-2 text-xs">
             <div className="font-semibold text-muted-foreground pb-1">Configured Form Fields & Settings</div>
 
-            <div className="divide-y border rounded-lg overflow-hidden bg-background">
-              {selectedForm.fields.map((field) => (
-                <div key={field.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleFieldVisibility(field.id)}
-                      className={`p-1.5 rounded transition ${
-                        field.visible ? 'text-emerald-600 bg-emerald-500/10' : 'text-muted-foreground bg-muted'
-                      }`}
-                      title={field.visible ? 'Field Active (Click to Hide)' : 'Field Hidden (Click to Show)'}
-                    >
-                      {field.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    </button>
+            {selectedForm.fields.length === 0 ? (
+              <div className="p-6 text-center border rounded-lg bg-muted/20 space-y-2">
+                <div className="text-muted-foreground font-medium">All columns have been deleted from this form.</div>
+                <button
+                  onClick={restoreDefaultFields}
+                  className="px-3 py-1.5 bg-primary text-primary-foreground font-semibold text-xs rounded-md hover:bg-primary/90 transition"
+                >
+                  Restore Default Form Fields
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y border rounded-lg overflow-hidden bg-background">
+                {selectedForm.fields.map((field) => (
+                  <div key={field.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => toggleFieldVisibility(field.id)}
+                        className={`p-1.5 rounded transition ${
+                          field.visible ? 'text-emerald-600 bg-emerald-500/10' : 'text-muted-foreground bg-muted'
+                        }`}
+                        title={field.visible ? 'Field Active (Click to Hide)' : 'Field Hidden (Click to Show)'}
+                      >
+                        {field.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      </button>
 
-                    <div>
-                      <div className="font-semibold text-foreground flex items-center gap-2">
-                        <span>{field.label}</span>
-                        {field.required && (
-                          <span className="text-[10px] bg-red-500/10 text-red-600 font-bold px-1.5 py-0.5 rounded">
-                            Required
-                          </span>
-                        )}
-                        {field.isCustom && (
-                          <span className="text-[10px] bg-blue-500/10 text-blue-600 font-bold px-1.5 py-0.5 rounded">
-                            Custom
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground font-mono">
-                        Type: {field.type.toUpperCase()} &bull; Key: {field.id}
+                      <div>
+                        <div className="font-semibold text-foreground flex items-center gap-2">
+                          <span>{field.label}</span>
+                          {field.required && (
+                            <span className="text-[10px] bg-red-500/10 text-red-600 font-bold px-1.5 py-0.5 rounded">
+                              Required
+                            </span>
+                          )}
+                          {field.isCustom && (
+                            <span className="text-[10px] bg-blue-500/10 text-blue-600 font-bold px-1.5 py-0.5 rounded">
+                              Custom
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono">
+                          Type: {field.type.toUpperCase()} &bull; Key: {field.id}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        field.visible ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-500'
-                      }`}
-                    >
-                      {field.visible ? 'VISIBLE' : 'HIDDEN'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          field.visible ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-500'
+                        }`}
+                      >
+                        {field.visible ? 'VISIBLE' : 'HIDDEN'}
+                      </span>
 
-                    <button
-                      onClick={() => openEditFieldModal(field)}
-                      className="p-1 text-primary hover:bg-primary/10 rounded"
-                      title="Edit field settings"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                    </button>
-
-                    {field.isCustom && (
                       <button
-                        onClick={() => deleteCustomField(field.id)}
-                        className="p-1 text-destructive hover:bg-destructive/10 rounded"
-                        title="Delete custom field"
+                        onClick={() => openEditFieldModal(field)}
+                        className="p-1 text-primary hover:bg-primary/10 rounded"
+                        title="Edit field settings"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => deleteField(field.id)}
+                        className="p-1 text-destructive hover:bg-destructive/10 rounded transition"
+                        title="Delete column/field from form"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

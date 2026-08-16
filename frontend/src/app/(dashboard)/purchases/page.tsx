@@ -9,8 +9,10 @@ import { Purchase } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { DataTable } from '@/components/ui/data-table';
 import { Modal } from '@/components/ui/modal';
+import { useFormCustomization } from '@/lib/useFormCustomization';
 
 export default function PurchasesPage() {
+  const { isFieldVisible, getFieldLabel } = useFormCustomization('purchase-form');
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -213,78 +215,90 @@ export default function PurchasesPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Supplier Organization *</label>
-              <select
-                value={formData.supplierId}
-                onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              >
-                <option value="">Select Supplier</option>
-                {suppliers?.map((s: any) => (
-                  <option key={s.id} value={s.id}>
-                    {s.supplierName}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {isFieldVisible('supplierId') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('supplierId', 'Supplier Organization')} *</label>
+                <select
+                  value={formData.supplierId}
+                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                >
+                  <option value="">Select Supplier</option>
+                  {suppliers?.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.supplierName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Supplier Invoice No *</label>
-              <input
-                type="text"
-                required
-                value={formData.invoiceNumber}
-                onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md font-mono"
-              />
-            </div>
+            {isFieldVisible('invoiceNumber') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('invoiceNumber', 'Supplier Invoice No')} *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.invoiceNumber}
+                  onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md font-mono"
+                />
+              </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Invoice Date *</label>
-              <input
-                type="date"
-                required
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              />
-            </div>
+            {isFieldVisible('date') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('date', 'Invoice Date')} *</label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Destination Branch *</label>
-              <select
-                value={formData.warehouse}
-                onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md font-semibold"
-              >
-                <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
-                <option value="Johri Bazar">Johri Bazar</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {isFieldVisible('warehouse') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('warehouse', 'Destination Branch')} *</label>
+                <select
+                  value={formData.warehouse}
+                  onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md font-semibold"
+                >
+                  <option value="Vishwakarma Industrial Area">Vishwakarma Industrial Area</option>
+                  <option value="Johri Bazar">Johri Bazar</option>
+                </select>
+              </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Transport Charge (₹)</label>
-              <input
-                type="number"
-                value={formData.transportCharge}
-                onChange={(e) => setFormData({ ...formData, transportCharge: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              />
-            </div>
+            {isFieldVisible('transportCharge') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('transportCharge', 'Transport Charge (₹)')}</label>
+                <input
+                  type="number"
+                  value={formData.transportCharge}
+                  onChange={(e) => setFormData({ ...formData, transportCharge: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="font-medium text-muted-foreground">Notes / Remarks</label>
-              <input
-                type="text"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full p-2 bg-background border rounded-md"
-              />
-            </div>
+            {isFieldVisible('notes') && (
+              <div className="space-y-1">
+                <label className="font-medium text-muted-foreground">{getFieldLabel('notes', 'Notes / Remarks')}</label>
+                <input
+                  type="text"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full p-2 bg-background border rounded-md"
+                />
+              </div>
+            )}
           </div>
 
           {/* Line Items */}
