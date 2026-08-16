@@ -177,14 +177,6 @@ export class ProductsController {
     }
   }
 
-      const data = await prisma.product.findUnique({ where: { id: pId.toString() }, include: { category: true } });
-      return res.json({ success: true, data });
-    } catch (e: any) {
-      console.error('Product Create Error:', e);
-      return res.status(500).json({ success: false, message: e.message || 'Failed to create product' });
-    }
-  }
-
   static async update(req: Request, res: Response) {
     const updateData: any = { ...req.body, updatedAt: new Date() };
     if (req.body.categoryId) updateData.categoryId = toObjectId(req.body.categoryId);
