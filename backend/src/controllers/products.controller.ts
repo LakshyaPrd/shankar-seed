@@ -233,8 +233,24 @@ export class ProductsController {
   }
 
   static async remove(req: Request, res: Response) {
-    const db = await getMongoDb();
-    await db.collection('products').deleteOne({ _id: toObjectId(req.params.id) });
-    return res.json({ success: true, data: { message: 'Product deleted' } });
+    try {
+      const db = await getMongoDb();
+      const pId = toObjectId(req.params.id);
+      if (!pId) return res.status(400).json({ success: false, message: 'Invalid product ID' });
+
+      // Cascade delete orphaned child records
+      await Promise.all([
+        db.collection('products').deleteOne({ _id: pId }),
+        db.collection('inventory').deleteMany({ productId: pId }),
+        db.collection('stock_movements').deleteMany({ productId: pId }),
+        db.collection('purchase_items').deleteMany({ productId: pId }),
+        db.collection('dispatch_items').deleteMany({ productId: pId }),
+      ]);
+
+      return res.json({ success: true, data: { message: 'Product and associated records deleted' } });
+    } catch (e: any) {
+      console.error('Product Delete Error:', e);
+      return res.status(500).json({ success: false, message: e.message || 'Failed to delete product' });
+    }
   }
 }
