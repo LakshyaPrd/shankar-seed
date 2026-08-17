@@ -108,8 +108,8 @@ export class ProductsController {
       const catIdStr = req.body.categoryId;
       const catNameStr = req.body.categoryName;
 
-      if (catNameStr || !catIdStr || !catIdStr.match(/^[0-9a-fA-F]{24}$/)) {
-        const targetCatName = (catNameStr || catIdStr || 'General Seeds').trim();
+      if (catNameStr || !catIdStr || typeof catIdStr !== 'string' || !catIdStr.match(/^[0-9a-fA-F]{24}$/)) {
+        const targetCatName = (catNameStr || (typeof catIdStr === 'string' && catIdStr ? catIdStr : 'General Seeds')).trim();
         let existingCat = await prisma.category.findFirst({
           where: { name: { equals: targetCatName, mode: 'insensitive' } },
         });
@@ -127,6 +127,13 @@ export class ProductsController {
         }
       } else {
         catObjId = toObjectId(catIdStr);
+      }
+
+      if (!catObjId) {
+        const defaultCat = await prisma.category.findFirst();
+        if (defaultCat) {
+          catObjId = toObjectId(defaultCat.id);
+        }
       }
 
       const prodName = String(req.body.name || '').trim();
@@ -178,15 +185,51 @@ export class ProductsController {
   }
 
   static async update(req: Request, res: Response) {
-    const updateData: any = { ...req.body, updatedAt: new Date() };
-    if (req.body.categoryId) updateData.categoryId = toObjectId(req.body.categoryId);
-    if (req.body.minimumStock !== undefined) updateData.minimumStock = Number(req.body.minimumStock);
+    try {
+      const db = await getMongoDb();
+      const { id, _id, category, inventories, movements, totalStock, isLowStock, categoryName, ...rest } = req.body;
+      const updateData: any = { ...rest, updatedAt: new Date() };
 
-    const db = await getMongoDb();
-    await db.collection('products').updateOne({ _id: toObjectId(req.params.id) }, { $set: updateData });
+      if (req.body.categoryId !== undefined) {
+        const catObjId = toObjectId(req.body.categoryId);
+        if (catObjId) {
+          updateData.categoryId = catObjId;
+        } else {
+          // Do not write invalid string or empty string to MongoDB categoryId
+          delete updateData.categoryId;
+        }
+      }
 
-    const data = await prisma.product.findUnique({ where: { id: req.params.id }, include: { category: true } });
-    return res.json({ success: true, data });
+      if (categoryName && !updateData.categoryId) {
+        const targetCatName = String(categoryName).trim();
+        let existingCat = await prisma.category.findFirst({
+          where: { name: { equals: targetCatName, mode: 'insensitive' } },
+        });
+
+        if (!existingCat) {
+          const catIns = await db.collection('categories').insertOne({
+            name: targetCatName,
+            description: 'Custom seed category',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+          updateData.categoryId = catIns.insertedId;
+        } else {
+          updateData.categoryId = toObjectId(existingCat.id);
+        }
+      }
+
+      if (req.body.minimumStock !== undefined) updateData.minimumStock = Number(req.body.minimumStock);
+      if (req.body.bagWeight !== undefined) updateData.bagWeight = Number(req.body.bagWeight);
+
+      await db.collection('products').updateOne({ _id: toObjectId(req.params.id) }, { $set: updateData });
+
+      const data = await prisma.product.findUnique({ where: { id: req.params.id }, include: { category: true } });
+      return res.json({ success: true, data });
+    } catch (e: any) {
+      console.error('Product Update Error:', e);
+      return res.status(500).json({ success: false, message: e.message || 'Failed to update product' });
+    }
   }
 
   static async remove(req: Request, res: Response) {
