@@ -213,7 +213,6 @@ export default function InventoryPage() {
     });
     setIsResetModalOpen(true);
   };
-  };
 
   // Filter Auto-created items (e.g. products created during dispatch entries or negative current stock)
   const autoCreatedItems = (inventoryData || []).filter(
