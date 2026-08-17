@@ -57,6 +57,9 @@ router.delete('/products/:id', authenticate, ProductsController.remove);
 router.get('/inventory', authenticate, InventoryController.findAll);
 router.get('/inventory/low-stock-alerts', authenticate, InventoryController.getLowStockAlerts);
 router.post('/inventory/adjust', authenticate, InventoryController.adjustStock);
+router.post('/inventory/reset', authenticate, InventoryController.resetStock);
+router.put('/inventory/:id/reset', authenticate, InventoryController.resetStock);
+router.post('/inventory/reset-all', authenticate, InventoryController.resetAllStock);
 router.get('/stock/movements', authenticate, StockController.getMovements);
 
 // Customers & Suppliers Routes

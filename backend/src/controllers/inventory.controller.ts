@@ -97,6 +97,77 @@ export class InventoryController {
 
     return res.json({ success: true, data: inventory });
   }
+
+  static async resetStock(req: Request, res: Response) {
+    try {
+      const db = await getMongoDb();
+      const id = req.params.id || req.body.id;
+      const { currentStock = 0, incoming = 0, outgoing = 0, remarks } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'Inventory ID is required' });
+      }
+
+      const invObjId = toObjectId(id);
+      if (!invObjId) {
+        return res.status(400).json({ success: false, message: 'Invalid inventory ID' });
+      }
+
+      const newCurrent = Number(currentStock || 0);
+      const newIncoming = Number(incoming || 0);
+      const newOutgoing = Number(outgoing || 0);
+
+      await db.collection('inventory').updateOne(
+        { _id: invObjId },
+        {
+          $set: {
+            currentStock: newCurrent,
+            incoming: newIncoming,
+            outgoing: newOutgoing,
+            updatedAt: new Date(),
+          },
+        }
+      );
+
+      const existingInv = await db.collection('inventory').findOne({ _id: invObjId });
+      if (existingInv) {
+        await db.collection('stock_movements').insertOne({
+          productId: existingInv.productId,
+          type: 'ADJUSTMENT' as MovementType,
+          quantity: newCurrent,
+          referenceType: 'MANUAL_RESET',
+          warehouse: existingInv.warehouse || 'Main Warehouse',
+          remarks: remarks || `Reset inventory stock counters: Current=${newCurrent}, Incoming=${newIncoming}, Outgoing=${newOutgoing}`,
+          createdAt: new Date(),
+        });
+      }
+
+      const updated = await prisma.inventory.findUnique({
+        where: { id: String(id) },
+        include: { product: { include: { category: true } } },
+      });
+
+      return res.json({ success: true, data: updated, message: 'Inventory numbers successfully reset' });
+    } catch (e: any) {
+      console.error('Reset Stock Error:', e);
+      return res.status(500).json({ success: false, message: e.message || 'Failed to reset inventory' });
+    }
+  }
+
+  static async resetAllStock(req: Request, res: Response) {
+    try {
+      const db = await getMongoDb();
+      await db.collection('inventory').updateMany(
+        {},
+        { $set: { currentStock: 0, incoming: 0, outgoing: 0, updatedAt: new Date() } }
+      );
+      await db.collection('stock_movements').deleteMany({});
+      return res.json({ success: true, message: 'All inventory stock counters and movement history successfully reset to 0' });
+    } catch (e: any) {
+      console.error('Reset All Stock Error:', e);
+      return res.status(500).json({ success: false, message: e.message || 'Failed to reset all inventory' });
+    }
+  }
 }
 
 export class StockController {

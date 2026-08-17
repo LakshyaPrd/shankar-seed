@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { Boxes, AlertTriangle, ArrowUpDown, History, Plus, Sparkles, CheckCircle2, Edit3 } from 'lucide-react';
+import { Boxes, AlertTriangle, ArrowUpDown, History, Plus, Sparkles, CheckCircle2, Edit3, RotateCcw, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Inventory } from '@/types';
 import { formatDate } from '@/lib/utils';
@@ -17,7 +17,10 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'auto-created' | 'low-stock' | 'movements'>('all');
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isResetAllModalOpen, setIsResetAllModalOpen] = useState(false);
   const [selectedAutoItem, setSelectedAutoItem] = useState<any>(null);
+  const [selectedResetItem, setSelectedResetItem] = useState<any>(null);
 
   const [adjustForm, setAdjustForm] = useState({
     productId: '',
@@ -36,6 +39,14 @@ export default function InventoryPage() {
     minimumStock: '50',
     hsn: '12091000',
     brand: 'Shankar Seeds',
+  });
+
+  const [resetForm, setResetForm] = useState({
+    id: '',
+    currentStock: '0',
+    incoming: '0',
+    outgoing: '0',
+    remarks: 'Manual correction of incorrect stock/incoming figures',
   });
 
   // Query Inventory
@@ -125,6 +136,33 @@ export default function InventoryPage() {
     },
   });
 
+  const resetMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      return api.post('/inventory/reset', payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-low-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      setIsResetModalOpen(false);
+      setSelectedResetItem(null);
+    },
+  });
+
+  const resetAllMutation = useMutation({
+    mutationFn: async () => {
+      return api.post('/inventory/reset-all');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-low-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      setIsResetAllModalOpen(false);
+    },
+  });
+
   const handleAdjustSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const isBag = adjustForm.unitType === 'BAG' || adjustForm.unitType === 'PACKET';
@@ -147,6 +185,11 @@ export default function InventoryPage() {
     approveMutation.mutate(approveForm);
   };
 
+  const handleResetSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    resetMutation.mutate(resetForm);
+  };
+
   const openApproveModal = (inv: any) => {
     setSelectedAutoItem(inv);
     setApproveForm({
@@ -157,6 +200,19 @@ export default function InventoryPage() {
       brand: inv.product?.brand || 'Shankar Seeds',
     });
     setIsApproveModalOpen(true);
+  };
+
+  const openResetModal = (inv: any) => {
+    setSelectedResetItem(inv);
+    setResetForm({
+      id: inv.id,
+      currentStock: String(inv.currentStock || 0),
+      incoming: String(inv.incoming || 0),
+      outgoing: String(inv.outgoing || 0),
+      remarks: 'Manual correction of incorrect stock/incoming figures',
+    });
+    setIsResetModalOpen(true);
+  };
   };
 
   // Filter Auto-created items (e.g. products created during dispatch entries or negative current stock)
@@ -218,12 +274,22 @@ export default function InventoryPage() {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <button
-          onClick={() => openApproveModal(row.original)}
-          className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-primary/10 text-primary font-semibold rounded hover:bg-primary/20 transition"
-        >
-          <Edit3 className="h-3.5 w-3.5" /> Edit & Set Opening Stock
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => openApproveModal(row.original)}
+            className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-primary/10 text-primary font-semibold rounded hover:bg-primary/20 transition"
+            title="Edit product details & opening stock"
+          >
+            <Edit3 className="h-3.5 w-3.5" /> Edit
+          </button>
+          <button
+            onClick={() => openResetModal(row.original)}
+            className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold rounded hover:bg-amber-500/20 transition border border-amber-500/30"
+            title="Reset or correct stock/incoming numbers directly"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Reset Stock
+          </button>
+        </div>
       ),
     },
   ];
@@ -281,12 +347,21 @@ export default function InventoryPage() {
             Track batch numbers, expiry dates, auto-created dispatch seeds, and real-time stock movements
           </p>
         </div>
-        <button
-          onClick={() => setIsAdjustModalOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground font-semibold text-xs rounded-md hover:bg-primary/90 transition shadow-xs"
-        >
-          <Plus className="h-4 w-4" /> Manual Stock Adjustment
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsResetAllModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold text-xs rounded-md hover:bg-amber-500/20 transition shadow-xs"
+            title="Reset all inventory numbers and movement history to zero"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Reset All Stocks to 0
+          </button>
+          <button
+            onClick={() => setIsAdjustModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground font-semibold text-xs rounded-md hover:bg-primary/90 transition shadow-xs"
+          >
+            <Plus className="h-4 w-4" /> Manual Stock Adjustment
+          </button>
+        </div>
       </div>
 
       {/* Navigation Tabs */}
@@ -673,6 +748,138 @@ export default function InventoryPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Reset Stock Modal */}
+      <Modal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        title={`Reset / Correct Stock Numbers: ${selectedResetItem?.product?.name || 'Inventory Item'}`}
+        description="Directly edit or overwrite incorrect incoming, outgoing, or current stock figures"
+      >
+        <form onSubmit={handleResetSubmit} className="space-y-4 text-xs">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-800 dark:text-amber-200 space-y-1">
+            <div className="font-bold flex items-center justify-between">
+              <span>{selectedResetItem?.product?.name} ({selectedResetItem?.product?.brand || 'Shankar Seeds'})</span>
+              <span className="font-mono text-xs">{selectedResetItem?.batchNumber}</span>
+            </div>
+            <p className="text-[11px]">
+              Use this tool to overwrite incorrectly recorded numbers (like extra incoming stock).
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Total Incoming *</label>
+              <input
+                type="number"
+                required
+                value={resetForm.incoming}
+                onChange={(e) => setResetForm({ ...resetForm, incoming: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md font-bold text-emerald-600"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Total Outgoing *</label>
+              <input
+                type="number"
+                required
+                value={resetForm.outgoing}
+                onChange={(e) => setResetForm({ ...resetForm, outgoing: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md font-bold text-amber-600"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Current Net Stock *</label>
+              <input
+                type="number"
+                required
+                value={resetForm.currentStock}
+                onChange={(e) => setResetForm({ ...resetForm, currentStock: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md font-bold text-primary"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-2 bg-muted rounded border">
+            <span className="text-[11px] font-semibold text-muted-foreground">Quick Action Shortcut:</span>
+            <button
+              type="button"
+              onClick={() => setResetForm({ ...resetForm, incoming: '0', outgoing: '0', currentStock: '0' })}
+              className="flex items-center gap-1 px-2.5 py-1 bg-destructive/10 text-destructive font-bold text-[11px] rounded hover:bg-destructive/20 transition"
+            >
+              <RotateCcw className="h-3 w-3" /> Zero Out All Numbers (0 / 0 / 0)
+            </button>
+          </div>
+
+          <div className="space-y-1">
+            <label className="font-medium text-muted-foreground">Correction Reason / Note</label>
+            <input
+              type="text"
+              value={resetForm.remarks}
+              onChange={(e) => setResetForm({ ...resetForm, remarks: e.target.value })}
+              placeholder="e.g. Corrected incorrect incoming stock entry"
+              className="w-full p-2 bg-background border rounded-md"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsResetModalOpen(false)}
+              className="px-4 py-2 border rounded-md text-muted-foreground hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={resetMutation.isPending}
+              className="px-4 py-2 bg-amber-600 text-white font-bold rounded-md hover:bg-amber-700 shadow-xs"
+            >
+              {resetMutation.isPending ? 'Saving Correction...' : 'Save Corrected Stock Numbers'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Reset All Stock Modal */}
+      <Modal
+        isOpen={isResetAllModalOpen}
+        onClose={() => setIsResetAllModalOpen(false)}
+        title="Reset All Inventory Stocks to Zero (0)"
+        description="Clear all incoming, outgoing, and current stock counters across the entire warehouse"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-sm">Warning: Master Inventory Reset</div>
+              <p className="mt-0.5 text-[11px]">
+                This will set <strong>Current Stock = 0</strong>, <strong>Incoming = 0</strong>, and <strong>Outgoing = 0</strong> for ALL items in your inventory catalog and clear manual movement logs. This action cannot be undone!
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsResetAllModalOpen(false)}
+              className="px-4 py-2 border rounded-md text-muted-foreground hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={resetAllMutation.isPending}
+              onClick={() => resetAllMutation.mutate()}
+              className="px-4 py-2 bg-destructive text-destructive-foreground font-bold rounded-md hover:bg-destructive/90 shadow-xs"
+            >
+              {resetAllMutation.isPending ? 'Resetting All Stocks...' : 'Yes, Reset All Stocks to 0'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
