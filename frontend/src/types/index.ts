@@ -103,6 +103,7 @@ export interface Dispatch {
   id: string;
   billNumber: string;
   date: string;
+  customerId?: string;
   partyName: string;
   transportName: string;
   driverName: string;

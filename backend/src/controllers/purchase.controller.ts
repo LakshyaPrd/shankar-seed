@@ -461,6 +461,147 @@ export class DispatchController {
     }
   }
 
+  static async update(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const {
+        billNumber,
+        date,
+        customerId,
+        partyName,
+        transportName,
+        driverName,
+        vehicleNumber,
+        mobileNumber,
+        destination,
+        goodsDescription,
+        remarks,
+        items,
+      } = req.body;
+
+      const db = await getMongoDb();
+      const dispatchObjId = toObjectId(id);
+      if (!dispatchObjId) {
+        return res.status(400).json({ success: false, message: 'Invalid dispatch ID' });
+      }
+
+      let totalQty = 0;
+      let totalAmt = 0;
+      const processedItems: any[] = [];
+
+      if (items && Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          let pId: string = item.productId || '';
+          if (!pId || !pId.match(/^[0-9a-fA-F]{24}$/)) {
+            const rawName = (item.productName || item.productId || 'Custom Seed Variety').trim();
+            let existingProd = await prisma.product.findFirst({
+              where: { name: { equals: rawName, mode: 'insensitive' } },
+            });
+            if (!existingProd) {
+              let defaultCat = await prisma.category.findFirst({ where: { name: 'General Seeds' } });
+              if (!defaultCat) {
+                const catIns = await db.collection('categories').insertOne({
+                  name: 'General Seeds',
+                  description: 'Auto-created general seed category',
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                });
+                defaultCat = { id: catIns.insertedId.toString() } as any;
+              }
+              const prodIns = await db.collection('products').insertOne({
+                name: rawName,
+                brand: item.brand || 'Shankar Seeds',
+                categoryId: toObjectId(defaultCat!.id),
+                hsn: '12091000',
+                unit: item.unit || 'KG',
+                minimumStock: 10,
+                description: 'Auto-created during dispatch update',
+                barcode: 'BAR-AUTO-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                status: 'ACTIVE',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+              pId = prodIns.insertedId.toString();
+            } else {
+              pId = existingProd.id;
+            }
+          }
+
+          const qty = Number(item.quantity || 0);
+          const rate = Number(item.rate || 0);
+          const amt = qty * rate;
+          totalQty += qty;
+          totalAmt += amt;
+
+          processedItems.push({
+            productId: toObjectId(pId),
+            productName: item.productName || undefined,
+            batchNumber: item.batchNumber || 'BATCH-2026-01',
+            warehouse: item.warehouse || 'Main Warehouse',
+            quantity: qty,
+            rate,
+            amount: amt,
+          });
+        }
+      }
+
+      const updateFields: any = {
+        updatedAt: new Date(),
+      };
+      if (billNumber) updateFields.billNumber = billNumber;
+      if (date) updateFields.date = new Date(date);
+      if (partyName) updateFields.partyName = partyName;
+      if (transportName !== undefined) updateFields.transportName = transportName;
+      if (driverName !== undefined) updateFields.driverName = driverName;
+      if (vehicleNumber !== undefined) updateFields.vehicleNumber = vehicleNumber;
+      if (mobileNumber !== undefined) updateFields.mobileNumber = mobileNumber;
+      if (destination !== undefined) updateFields.destination = destination;
+      if (goodsDescription !== undefined) updateFields.goodsDescription = goodsDescription;
+      if (remarks !== undefined) updateFields.remarks = remarks;
+
+      if (processedItems.length > 0) {
+        updateFields.totalQuantity = totalQty;
+        updateFields.totalAmount = totalAmt;
+      }
+
+      if (customerId) {
+        const validCustObjId = toObjectId(customerId);
+        if (validCustObjId) updateFields.customerId = validCustObjId;
+      }
+
+      await db.collection('dispatches').updateOne(
+        { _id: dispatchObjId },
+        { $set: updateFields }
+      );
+
+      if (processedItems.length > 0) {
+        await db.collection('dispatch_items').deleteMany({ dispatchId: dispatchObjId });
+        for (const dItem of processedItems) {
+          await db.collection('dispatch_items').insertOne({
+            dispatchId: dispatchObjId,
+            productId: dItem.productId,
+            productName: dItem.productName,
+            batchNumber: dItem.batchNumber,
+            quantity: dItem.quantity,
+            rate: dItem.rate,
+            amount: dItem.amount,
+            createdAt: new Date(),
+          });
+        }
+      }
+
+      const updated = await prisma.dispatch.findUnique({
+        where: { id: id },
+        include: { customer: true, items: { include: { product: true } } },
+      });
+
+      return res.json({ success: true, data: updated, message: 'Dispatch record updated successfully' });
+    } catch (e: any) {
+      console.error('Dispatch Update Error:', e);
+      return res.status(500).json({ success: false, message: e.message || 'Failed to update dispatch record' });
+    }
+  }
+
   static async remove(req: Request, res: Response) {
     const db = await getMongoDb();
     await db.collection('dispatches').deleteOne({ _id: toObjectId(req.params.id) });

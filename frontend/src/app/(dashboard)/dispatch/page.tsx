@@ -37,6 +37,10 @@ export default function DispatchPage() {
   const [deleteItem, setDeleteItem] = useState<Dispatch | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  // Edit modal state
+  const [editItem, setEditItem] = useState<Dispatch | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   // Field customization settings state (user can toggle which optional fields to display)
   const [showFieldConfig, setShowFieldConfig] = useState(false);
   const [fieldConfig, setFieldConfig] = useState({
@@ -127,6 +131,26 @@ export default function DispatchPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: string; payload: any }) => {
+      setErrorMessage('');
+      const res: any = await api.put(`/dispatches/${data.id}`, data.payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispatches'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      setIsEditModalOpen(false);
+      setEditItem(null);
+      setErrorMessage('');
+    },
+    onError: (err: any) => {
+      setErrorMessage(err.response?.data?.message || err.message || 'Failed to update dispatch entry');
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res: any = await api.delete(`/dispatches/${id}`);
@@ -141,6 +165,51 @@ export default function DispatchPage() {
       setDeleteItem(null);
     },
   });
+
+  const openEditModal = (d: Dispatch) => {
+    setEditItem(d);
+    setErrorMessage('');
+    setFormData({
+      billNumber: d.billNumber,
+      date: d.date ? new Date(d.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      customerId: d.customerId || '',
+      partyName: d.partyName || '',
+      transportName: d.transportName || '',
+      driverName: d.driverName || '',
+      vehicleNumber: d.vehicleNumber || '',
+      mobileNumber: d.mobileNumber || '',
+      destination: d.destination || '',
+      warehouse: 'Vishwakarma Industrial Area',
+      goodsDescription: d.goodsDescription || '',
+      remarks: d.remarks || '',
+    });
+
+    const dItems = (d as any).items || [];
+    if (dItems.length > 0) {
+      setItems(
+        dItems.map((i: any) => ({
+          productId: i.productId || '',
+          productName: i.productName || i.product?.name || '',
+          isCustom: !i.productId,
+          batchNumber: i.batchNumber || 'BATCH-GENERAL',
+          quantity: String(i.quantity || 1),
+          rate: String(i.rate || 0),
+        }))
+      );
+    } else {
+      setItems([
+        {
+          productId: '',
+          productName: '',
+          isCustom: false,
+          batchNumber: 'BATCH-GENERAL',
+          quantity: String(d.totalQuantity || 1),
+          rate: String(d.totalAmount ? Math.round(d.totalAmount / (d.totalQuantity || 1)) : 0),
+        },
+      ]);
+    }
+    setIsEditModalOpen(true);
+  };
 
   const addItemRow = () => {
     setItems([...items, { productId: '', productName: '', isCustom: false, batchNumber: '', quantity: '', rate: '' }]);
@@ -188,7 +257,7 @@ export default function DispatchPage() {
       };
     });
 
-    createMutation.mutate({
+    const payload = {
       billNumber: formData.billNumber,
       date: formData.date,
       customerId: formData.customerId ? formData.customerId : undefined,
@@ -201,7 +270,13 @@ export default function DispatchPage() {
       goodsDescription: formData.goodsDescription,
       remarks: fieldConfig.remarks ? formData.remarks : '',
       items: processedItems,
-    });
+    };
+
+    if (editItem && editItem.id) {
+      updateMutation.mutate({ id: editItem.id, payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   };
 
   // Clean Export Formatter for Excel / CSV Export (prevents [object Object] issue)
@@ -263,12 +338,24 @@ export default function DispatchPage() {
       cell: ({ row }) => {
         const dItems = row.original.items || [];
         const savedDesc = row.original.goodsDescription || row.original.remarks;
+        const isGeneric = !savedDesc || savedDesc.toLowerCase().includes('seed bags dispatch') || savedDesc.toLowerCase().includes('general dispatch');
+
         if (dItems.length === 0) {
           return (
-            <div className="text-xs max-w-xs py-1">
-              <span className="font-semibold text-foreground">
-                {savedDesc ? savedDesc : 'General Dispatch'}
-              </span>
+            <div className="flex items-center gap-1.5 text-xs max-w-xs py-1">
+              <div className="flex items-center gap-1.5 bg-muted/40 px-2 py-1 rounded border">
+                <PackageCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="font-semibold text-foreground">
+                  {isGeneric ? `Seed Dispatch (${row.original.totalQuantity} Units)` : savedDesc}
+                </span>
+              </div>
+              <button
+                onClick={() => openEditModal(row.original)}
+                className="p-1 text-muted-foreground hover:text-primary rounded transition"
+                title="Edit / assign specific seed product varieties"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </button>
             </div>
           );
         }
@@ -332,16 +419,25 @@ export default function DispatchPage() {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <button
-          onClick={() => {
-            setDeleteItem(row.original);
-            setIsDeleteModalOpen(true);
-          }}
-          className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition"
-          title="Delete Dispatch Entry"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => openEditModal(row.original)}
+            className="p-1.5 text-primary hover:bg-primary/10 rounded-md transition"
+            title="Edit Dispatch Entry & Seed Varieties"
+          >
+            <Edit3 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setDeleteItem(row.original);
+              setIsDeleteModalOpen(true);
+            }}
+            className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition"
+            title="Delete Dispatch Entry"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];
@@ -878,6 +974,229 @@ export default function DispatchPage() {
               className="w-full sm:w-auto px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-md hover:bg-primary/90 disabled:opacity-50"
             >
               {createMutation.isPending ? 'Processing Dispatch...' : 'Save & Reduce Stock'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Dispatch Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Dispatch Entry: ${editItem?.billNumber}`}
+        description="Select or add seed products dispatched for this entry"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {errorMessage && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Bill / Gate Pass Number *</label>
+              <input
+                type="text"
+                required
+                value={formData.billNumber}
+                onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md font-mono font-bold text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Dispatch Date *</label>
+              <input
+                type="date"
+                required
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Party / Customer Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.partyName}
+                onChange={(e) => setFormData({ ...formData, partyName: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md font-bold"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Transport Agency</label>
+              <input
+                type="text"
+                value={formData.transportName}
+                onChange={(e) => setFormData({ ...formData, transportName: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Driver Name</label>
+              <input
+                type="text"
+                value={formData.driverName}
+                onChange={(e) => setFormData({ ...formData, driverName: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Vehicle Number</label>
+              <input
+                type="text"
+                value={formData.vehicleNumber}
+                onChange={(e) => setFormData({ ...formData, vehicleNumber: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Driver Phone Number</label>
+              <input
+                type="text"
+                value={formData.mobileNumber}
+                onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-muted-foreground">Destination City / Market</label>
+              <input
+                type="text"
+                value={formData.destination}
+                onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+                className="w-full p-2 bg-background border rounded-md"
+              />
+            </div>
+          </div>
+
+          {/* Seed Products Items Section */}
+          <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
+            <div className="flex items-center justify-between font-semibold">
+              <span>Dispatched Seed Varieties (Line Items)</span>
+              <button
+                type="button"
+                onClick={addItemRow}
+                className="flex items-center gap-1 text-[11px] text-primary hover:underline font-bold"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Product Row
+              </button>
+            </div>
+
+            {items.map((item, idx) => (
+              <div key={idx} className="bg-card p-3 rounded-lg border space-y-2 shadow-2xs">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                  <div className="sm:col-span-6 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-medium text-muted-foreground">
+                        {item.isCustom ? 'Type Custom Product Name' : 'Select Product Variety'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => toggleCustomItem(idx)}
+                        className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5"
+                      >
+                        {item.isCustom ? <ListFilter className="h-3 w-3" /> : <Type className="h-3 w-3" />}
+                        {item.isCustom ? 'Pick List' : '+ Custom Name'}
+                      </button>
+                    </div>
+
+                    {item.isCustom ? (
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Shankar Hybrid Mustard M-99"
+                        value={item.productName}
+                        onChange={(e) => updateItem(idx, 'productName', e.target.value)}
+                        className="w-full p-1.5 bg-background border border-primary/40 focus:border-primary rounded text-xs font-semibold"
+                      />
+                    ) : (
+                      <select
+                        value={item.productId}
+                        onChange={(e) => {
+                          if (e.target.value === '__CUSTOM__') {
+                            toggleCustomItem(idx);
+                          } else {
+                            const newItems = [...items];
+                            newItems[idx].productId = e.target.value;
+                            setItems(newItems);
+                          }
+                        }}
+                        className="w-full p-1.5 bg-background border rounded text-xs font-semibold"
+                      >
+                        <option value="">Select Seed Variety</option>
+                        {products?.map((p: any) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.brand}) {p.bagWeight ? `- ${p.bagWeight}KG Bag` : ''}
+                          </option>
+                        ))}
+                        <option value="__CUSTOM__" className="font-bold text-primary">
+                          + Type Custom New Seed Variety...
+                        </option>
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="sm:col-span-3 space-y-0.5">
+                    <label className="text-[10px] font-medium text-muted-foreground">Quantity Units</label>
+                    <input
+                      type="number"
+                      required
+                      value={item.quantity}
+                      onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                      placeholder="e.g. 10"
+                      className="w-full p-1.5 bg-background border rounded text-xs font-bold"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-0.5">
+                    <label className="text-[10px] font-medium text-muted-foreground">Rate (₹)</label>
+                    <input
+                      type="number"
+                      value={item.rate}
+                      onChange={(e) => updateItem(idx, 'rate', e.target.value)}
+                      placeholder="e.g. 250"
+                      className="w-full p-1.5 bg-background border rounded text-xs font-bold text-emerald-600"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-1 flex justify-end pt-3">
+                    <button
+                      type="button"
+                      onClick={() => removeItemRow(idx)}
+                      className="p-1 text-destructive hover:bg-destructive/10 rounded"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="w-full sm:w-auto px-4 py-2 border rounded-md text-muted-foreground hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="w-full sm:w-auto px-4 py-2 bg-primary text-primary-foreground font-bold rounded-md hover:bg-primary/90 disabled:opacity-50"
+            >
+              {updateMutation.isPending ? 'Updating Entry...' : 'Save Seed Varieties & Update Entry'}
             </button>
           </div>
         </form>

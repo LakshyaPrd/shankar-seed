@@ -85,6 +85,7 @@ router.delete('/purchases/:id', authenticate, PurchaseController.remove);
 router.get('/dispatches', authenticate, DispatchController.findAll);
 router.get('/dispatches/:id', authenticate, DispatchController.findOne);
 router.post('/dispatches', authenticate, DispatchController.create);
+router.put('/dispatches/:id', authenticate, DispatchController.update);
 router.delete('/dispatches/:id', authenticate, DispatchController.remove);
 
 // Transport & Employees Routes
