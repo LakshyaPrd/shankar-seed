@@ -349,6 +349,7 @@ export class DispatchController {
         processedItems.push({
           productId: toObjectId(pId),
           originalProductIdStr: pId,
+          productName: item.productName || (item.productId ? undefined : 'Seed Variety'),
           batchNumber: item.batchNumber || 'BATCH-2026-01',
           warehouse: item.warehouse || 'Main Warehouse',
           quantity: qty,
@@ -388,6 +389,7 @@ export class DispatchController {
         await db.collection('dispatch_items').insertOne({
           dispatchId,
           productId: dItem.productId,
+          productName: dItem.productName,
           batchNumber: dItem.batchNumber,
           quantity: dItem.quantity,
           rate: dItem.rate,

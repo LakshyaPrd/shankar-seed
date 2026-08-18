@@ -209,7 +209,7 @@ export default function DispatchPage() {
     return rows.map((d) => {
       const itemsFormatted = (d.items || [])
         .map((item: any) => {
-          const pName = item.product?.name || item.productName || 'Seed Variety';
+          const pName = item.product?.name || item.productName || item.goodsDescription || d.goodsDescription || 'Seed Variety';
           const batch = item.batchNumber ? ` (Batch: ${item.batchNumber})` : '';
           const qty = ` x${item.quantity}`;
           const rate = item.rate ? ` @ ₹${item.rate}` : '';
@@ -217,12 +217,14 @@ export default function DispatchPage() {
         })
         .join('; ');
 
+      const fallbackDesc = d.goodsDescription || d.remarks || 'General Dispatch';
+
       return {
         'Bill Number': d.billNumber,
         'Date': formatDate(d.date),
         'Party / Customer': d.partyName,
         'Destination': d.destination || 'N/A',
-        'Dispatched Seed Varieties & Batches': itemsFormatted || 'General Dispatch',
+        'Dispatched Seed Varieties & Batches': itemsFormatted || fallbackDesc,
         'Transport Agency': d.transportName || 'N/A',
         'Vehicle Number': d.vehicleNumber || 'N/A',
         'Driver Name': d.driverName || 'N/A',
@@ -260,8 +262,15 @@ export default function DispatchPage() {
       header: 'Dispatched Seed Products',
       cell: ({ row }) => {
         const dItems = row.original.items || [];
+        const savedDesc = row.original.goodsDescription || row.original.remarks;
         if (dItems.length === 0) {
-          return <span className="text-xs text-muted-foreground italic">General Dispatch</span>;
+          return (
+            <div className="text-xs max-w-xs py-1">
+              <span className="font-semibold text-foreground">
+                {savedDesc ? savedDesc : 'General Dispatch'}
+              </span>
+            </div>
+          );
         }
         return (
           <div className="space-y-1 py-1 max-w-xs">
@@ -270,7 +279,7 @@ export default function DispatchPage() {
                 <PackageCheck className="h-3.5 w-3.5 text-primary shrink-0" />
                 <div className="flex-1 truncate">
                   <span className="font-semibold text-foreground">
-                    {item.product?.name || item.productName || 'Seed Variety'}
+                    {item.product?.name || item.productName || item.goodsDescription || savedDesc || 'Seed Variety'}
                   </span>
                   {item.batchNumber && (
                     <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">

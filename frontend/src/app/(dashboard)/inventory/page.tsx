@@ -205,7 +205,7 @@ export default function InventoryPage() {
   const openResetModal = (inv: any) => {
     setSelectedResetItem(inv);
     setResetForm({
-      id: inv.id,
+      id: inv.id || inv._id || '',
       currentStock: String(inv.currentStock || 0),
       incoming: String(inv.incoming || 0),
       outgoing: String(inv.outgoing || 0),
@@ -349,10 +349,10 @@ export default function InventoryPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsResetAllModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold text-xs rounded-md hover:bg-amber-500/20 transition shadow-xs"
-            title="Reset all inventory numbers and movement history to zero"
+            className="flex items-center gap-1.5 px-3 py-2 bg-destructive/10 text-destructive border border-destructive/30 font-semibold text-xs rounded-md hover:bg-destructive/20 transition shadow-xs"
+            title="DANGER: Wipes current stock and history for ALL inventory items across the entire warehouse"
           >
-            <RotateCcw className="h-3.5 w-3.5" /> Reset All Stocks to 0
+            <RotateCcw className="h-3.5 w-3.5" /> Master Reset All Catalog Stocks (0)
           </button>
           <button
             onClick={() => setIsAdjustModalOpen(true)}
@@ -809,7 +809,7 @@ export default function InventoryPage() {
               onClick={() => setResetForm({ ...resetForm, incoming: '0', outgoing: '0', currentStock: '0' })}
               className="flex items-center gap-1 px-2.5 py-1 bg-destructive/10 text-destructive font-bold text-[11px] rounded hover:bg-destructive/20 transition"
             >
-              <RotateCcw className="h-3 w-3" /> Zero Out All Numbers (0 / 0 / 0)
+              <RotateCcw className="h-3 w-3" /> Set This Single Item Stock to 0 (0 / 0 / 0)
             </button>
           </div>
 
